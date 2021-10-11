@@ -1,0 +1,21 @@
+#!/bin/bash
+cat /etc/hosts | grep -v "MAG_NAME" > /tmp/hosts.tmp
+i=0
+while read -r line;
+do
+  if [ $i == 0 ]
+  then
+    echo "$line" > /etc/hosts;
+  else
+    echo "$line" >> /etc/hosts;
+  fi
+  i=$((i+1))
+done < /tmp/hosts.tmp
+zone=`aws route53 list-hosted-zones|jq '.[] | .[] | .Id' | sed 's!/hostedzone/!!' | sed 's/"//g'`
+for x in `aws route53 list-resource-record-sets --hosted-zone-id $zone --query  "ResourceRecordSets[?Name == 'NGINX.'][ResourceRecords][][].Value" --output text`
+do
+  echo "$x MAG_NAME.diamondnexus.com MAG_NAME-api.diamondnexus.com" >> /etc/hosts
+  echo "$x MAG_NAME.1215diamonds.com MAG_NAME-api.1215diamonds.com" >> /etc/hosts
+  echo "$x MAG_NAME.foreverartisans.com MAG_NAME-api.foreverartisans.com" >> /etc/hosts
+done
+cat /etc/hosts

@@ -1,0 +1,70 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.7
+    commands:
+      - python --version
+  pre_build:
+    commands:
+      - export STARTTIME=`date +%s`
+      - export BUILDNAME="$GIT_BRANCH-`date +%Y-%m-%d`"
+      - export BRANCH="$GIT_BRANCH"
+      - export SOURCE_VERSION="$CODEBUILD_SOURCE_VERSION"
+      - export FUNCTION_NAME="$LAMBDA_TO_UPDATE"
+      - export username="$GITUSER"
+      - export pass="$GITPASSWORD"
+      - export bucket="$BUCKETPATH"
+      - export oauth="$GITOAUTH"
+      - echo "BRANCH $BRANCH"
+      - echo "SOURCE_VERSION $SOURCE_VERSION"
+      - echo "username $GITUSER"
+      - export task="$Taskid"
+      - export accountId="$account"
+      - export snstopic="$sns"
+      - $(aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email)
+      - IMAGE_TAG=build-$(git rev-parse HEAD)
+      - export efsid="$efs_standby"
+      - export datasyncsg="$securitygroup"
+      - export subnetid="$subnetId"
+  build:
+    commands:
+      - echo Build started on `date`
+      - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+      - apt-get -y update
+      - apt-get install -y nfs-common
+      - echo Building the Docker image...
+      - echo $REPOURL/producer:latest $REPOURL/producer:$IMAGE_TAG
+      - docker pull $REPOURL/producer:latest
+      - docker build -t producer --cache-from $REPOURL/producer:latest .
+      - docker tag producer:latest $REPOURL/producer:latest
+      - docker tag producer:latest $REPOURL/producer:$IMAGE_TAG
+      - docker images 
+      - docker create producer
+      - CONTAINER=$(docker ps -a | grep producer | awk '{print $1}')
+      - docker ps -a 
+      - echo $CONTAINER
+      - mkdir ./nfsmount/
+      - MOUNTTHIS=$MOUNTNFS
+      - mount -t nfs -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport $MOUNTTHIS:/ ./nfsmount/
+      - docker cp -a $CONTAINER:/usr/src/app/node_modules/ ./nfsmount/producer/
+      - docker cp -a $CONTAINER:/usr/src/app/package.json ./nfsmount/producer/
+      - docker cp -a $CONTAINER:/usr/src/app/package-lock.json ./nfsmount/producer/
+      - docker cp -a $CONTAINER:/usr/src/app/src/ ./nfsmount/producer/
+      - chown 1000:1000 -R ./nfsmount/
+      - sleep 3
+      - echo Pushing the Docker images...
+      - echo $REPOURL/producer:latest $REPOURL/producer:$IMAGE_TAG
+      - docker push $REPOURL/producer:latest
+      - docker push $REPOURL/producer:$IMAGE_TAG
+      - CLUSTER=mag2-prod-cluster
+      - echo $CLUSTER
+      - aws ecs update-service --force-new-deployment --service $REPO --cluster $CLUSTER
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - pwd
+      - ls -al
+artifacts:
+  files:
+    - '**/*'
