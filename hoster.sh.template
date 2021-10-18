@@ -11,8 +11,7 @@ do
   fi
   i=$((i+1))
 done < /tmp/hosts.tmp
-zone=`aws route53 list-hosted-zones|jq '.[] | .[] | .Id' | sed 's!/hostedzone/!!' | sed 's/"//g'`
-for x in `aws route53 list-resource-record-sets --hosted-zone-id $zone --query  "ResourceRecordSets[?Name == 'NGINX.'][ResourceRecords][][].Value" --output text`
+for x in `dig NGINX +short`
 do
   echo "$x MAG_NAME.diamondnexus.com MAG_NAME-api.diamondnexus.com" >> /etc/hosts
   echo "$x MAG_NAME.1215diamonds.com MAG_NAME-api.1215diamonds.com" >> /etc/hosts
