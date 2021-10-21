@@ -213,7 +213,10 @@ const commands = {
         for (let i = 0; i < config.paths.length; i++) {
             messages = messages.concat(varnishMessages[i])
         }
-        await sleep(15000)
+        let whichEnv = findWhichEnv()
+        if (whichEnv != 'local') {
+            await sleep(15000)
+        }
         return messages
     },
     flushVarnish: async function (config) {
