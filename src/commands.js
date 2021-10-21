@@ -175,6 +175,12 @@ const execFunction = async function (execString) {
         }
     }
 }
+
+const sleep = function (ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms)
+    })
+}
 const commands = {
     multiFlushVarnish: async function (config) {
         let messages = []
@@ -206,6 +212,10 @@ const commands = {
         let varnishMessages = await Promise.all(promiseArr)
         for (let i = 0; i < config.paths.length; i++) {
             messages = messages.concat(varnishMessages[i])
+        }
+        let whichEnv = findWhichEnv()
+        if (whichEnv != 'local') {
+            await sleep(15000)
         }
         return messages
     },
