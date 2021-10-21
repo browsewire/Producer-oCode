@@ -175,6 +175,12 @@ const execFunction = async function (execString) {
         }
     }
 }
+
+const sleep = function (ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms)
+    })
+}
 const commands = {
     multiFlushVarnish: async function (config) {
         let messages = []
@@ -207,6 +213,7 @@ const commands = {
         for (let i = 0; i < config.paths.length; i++) {
             messages = messages.concat(varnishMessages[i])
         }
+        await sleep(15000)
         return messages
     },
     flushVarnish: async function (config) {
