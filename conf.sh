@@ -19,19 +19,19 @@ for issue in issues.json()["items"]:
 }
 
 mark_deployed() {
-  curl -d '{"labels": ["deployed"]}' -X POST -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels
+  curl -d '{"labels": ["deployed_'$4'"]}' -X POST -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels
 }
 
 rm_deployed() {
-  curl -X DELETE -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels/deployed
+  curl -X DELETE -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels/deployed_$4
 }
 
 mark_conflict() {
-  curl -d '{"labels": ["conflict"]}' -X POST -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels
+  curl -d '{"labels": ["conflict_'$4'"]}' -X POST -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels
 }
 
 rm_conflict() {
-  curl -X DELETE -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels/conflict
+  curl -X DELETE -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels/conflict_$4
 }
 
 main_branch=origin/$BRANCH
