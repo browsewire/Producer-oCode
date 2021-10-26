@@ -66,31 +66,31 @@ try_merge()
     then
         warning already $branch
         pr_num=`echo $branch | sed 's/origin\/pr\///g'`
-        rm_conflict ForeverCompanies/producer $GITOAUTH $pr_num > /dev/null 2>&1
-        mark_deployed ForeverCompanies/producer $GITOAUTH $pr_num > /dev/null 2>&1
+        rm_conflict ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
+        mark_deployed ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
         return
     fi
     if run git merge --ff-only $branch $commit
     then
         good fast $branch $commit
         pr_num=`echo $branch | sed 's/origin\/pr\///g'`
-        rm_conflict ForeverCompanies/producer $GITOAUTH $pr_num > /dev/null 2>&1
-        mark_deployed ForeverCompanies/producer $GITOAUTH $pr_num > /dev/null 2>&1
+        rm_conflict ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
+        mark_deployed ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
         return
     fi
     if run git merge $branch $commit
     then
         good merge $branch $commit
         pr_num=`echo $branch | sed 's/origin\/pr\///g'`
-        rm_conflict ForeverCompanies/producer $GITOAUTH $pr_num > /dev/null 2>&1
-        mark_deployed ForeverCompanies/producer $GITOAUTH $pr_num > /dev/null 2>&1
+        rm_conflict ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
+        mark_deployed ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
         return
     fi
     git merge --abort
     error abort $branch $commit
     pr_num=`echo $branch | sed 's/origin\/pr\///g'`
-    mark_conflict ForeverCompanies/producer $GITOAUTH $pr_num > /dev/null 2>&1
-    rm_deployed ForeverCompanies/producer $GITOAUTH $pr_num > /dev/null 2>&1
+    mark_conflict ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
+    rm_deployed ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
     return
 }
 
@@ -104,6 +104,7 @@ do
     
     run git fetch --all 
     run git reset --hard $main_branch
+    mbranch=$(echo $main_branch | sed 's/origin\///g')
     info 'commit=$(' git rev-parse --verify -q $main_branch ')'
     commit=$(git rev-parse --verify -q $main_branch)
     if $trouble
@@ -112,7 +113,7 @@ do
     else
         for branch in ${extra_branches[@]}
         do
-            try_merge $branch
+            try_merge $branch $mbranch
         done
     fi
 
