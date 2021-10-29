@@ -419,7 +419,7 @@ const commands = {
         //}
 
         if (whichEnv === 'local') {
-            //whichEnv = 'dev'
+            // whichEnv = 'dev'
             messages.push(
                 config.siteId + ': skipping cache clear in ' + whichEnv + ' env'
             )
@@ -515,8 +515,14 @@ const commands = {
             execMessages = await execFunction(clearcmd)
             console.log('execMessages after create-invalidation', execMessages)
             if (typeof execMessages.error != 'undefined') {
-                console.log('error in create-invalidation')
-                messages = messages.concat(execMessages.messages)
+                console.log(
+                    'error in create-invalidation',
+                    execMessages.messages
+                )
+                //messages = messages.concat(execMessages.messages)
+                messages = messages.concat([
+                    'There was an error in create-invalidation while trying to flush aws.',
+                ])
                 return messages
             }
             if (isJson(execMessages.stdout)) {
@@ -578,6 +584,7 @@ const commands = {
                 messages.push('Giving up cache clear after 3 attempts.')
                 return messages
             }
+            await sleep(15000)
             let newMessages = commands.cacheclear(config)
             messages = messages.concat(newMessages)
         }
