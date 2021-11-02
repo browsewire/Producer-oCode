@@ -59,11 +59,13 @@ module.exports.start = async (message) => {
     })
 
     setTimeout(() => {
+        channel.close()
         connection.close()
     }, 3000)
 
     process.on('exit', (code) => {
         channel.close()
+        connection.close()
         console.log(`Closing rabbitmq channel`)
     })
 }
