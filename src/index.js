@@ -1,3 +1,8 @@
+// var memwatch = require('@airbnb/node-memwatch')
+// memwatch.on('leak', (info) => {
+//     console.error('Memory leak detected:\n', info)
+// })
+
 const express = require('express')
 const app = express()
 const producer = require('./broker')

@@ -326,7 +326,7 @@ const commands = {
 
                     if (now > endTime) {
                         try {
-                            let unlink = await fs.unlink(dirpath + fileList2[i])
+                            await fs.unlink(dirpath + fileList2[i])
                             console.log(
                                 'removed old inprogress cache log: ' +
                                     dirpath +
@@ -408,18 +408,18 @@ const commands = {
         siteId = config.siteId
 
         let varnishMessages = []
-        //if (['dn', 'tf', 'fa'].indexOf(siteId) != -1) {
-        console.log('calling multiFlushVarnish')
-        varnishMessages = await commands.multiFlushVarnish({
-            siteId,
-            paths: config.data,
-        })
-        console.log('varnishMessages', varnishMessages)
-        messages = messages.concat(varnishMessages)
-        //}
+        if (typeof config.varnishFlushedAlready == 'undefined') {
+            console.log('calling multiFlushVarnish')
+            varnishMessages = await commands.multiFlushVarnish({
+                siteId,
+                paths: config.data,
+            })
+            console.log('varnishMessages', varnishMessages)
+            messages = messages.concat(varnishMessages)
+            config.varnishFlushedAlready = true
+        }
 
         if (whichEnv === 'local') {
-            // whichEnv = 'dev'
             messages.push(
                 config.siteId + ': skipping cache clear in ' + whichEnv + ' env'
             )
