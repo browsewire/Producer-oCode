@@ -2,6 +2,7 @@ const fs = require('fs').promises
 const path = require('path')
 //https://stackoverflow.com/questions/30763496/how-to-promisify-nodes-child-process-exec-and-child-process-execfile-functions
 const util = require('util')
+/* promisify the exec function to run bash scripts async */
 const exec = util.promisify(require('child_process').exec)
 const MurmurHash3 = require('imurmurhash')
 
@@ -49,7 +50,7 @@ const storedCommands = {
     },
 }
 const findWhichEnv = function () {
-    let environment = 'local'
+    let environment = 'dev'
     if (process.env.MAG_NAME.indexOf('m2-dev') != -1) {
         environment = 'dev'
     }
@@ -62,6 +63,9 @@ const findWhichEnv = function () {
     return environment
 }
 
+/*
+Read a directory and sort the results by when they were last editted
+*/
 const readdirChronoSorted = async function (dirpath, order) {
     order = order || 1
     const files = await fs.readdir(dirpath)
@@ -90,6 +94,9 @@ const getLogDir = function () {
     return __dirname + '/logs/cache/'
 }
 
+/*
+Convert the time zone
+*/
 const convertTZ = function (date, tzString) {
     return new Date(
         (typeof date === 'string' ? new Date(date) : date).toLocaleString(
@@ -110,6 +117,9 @@ const makeCacheKey = function (source, query, vars) {
     return hash
 }
 
+/*
+Distribution IDs tell aws which cache to flush
+*/
 const awsDistributions = {
     dn: {
         dev: 'E1EDB6ZFCID4PF',
@@ -138,6 +148,10 @@ const awsDistributions = {
     },
 }
 
+/*
+Execute a bash function asynchronously then return the 
+messages
+*/
 const execFunction = async function (execString) {
     let messages = []
     try {
@@ -176,10 +190,12 @@ const execFunction = async function (execString) {
     }
 }
 
-const sleep = function (ms) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms)
-    })
+const sleep = async function (ms) {
+    let sleepTime = ms / 1000
+    let cmd = 'sleep ' + sleepTime
+    console.log('sleep command:', cmd)
+    let sleepMessages = await execFunction(cmd)
+    return sleepMessages
 }
 const commands = {
     multiFlushVarnish: async function (config) {
@@ -215,7 +231,8 @@ const commands = {
         }
         let whichEnv = findWhichEnv()
         if (whichEnv != 'local') {
-            await sleep(15000)
+            let sleepMessages = await sleep(15000)
+            messages = messages.concat(sleepMessages.messages)
         }
         return messages
     },
@@ -584,7 +601,8 @@ const commands = {
                 messages.push('Giving up cache clear after 3 attempts.')
                 return messages
             }
-            await sleep(15000)
+            let sleepMessages = await sleep(15000)
+            messages = messages.concat(sleepMessages.messages)
             let newMessages = commands.cacheclear(config)
             messages = messages.concat(newMessages)
         }
