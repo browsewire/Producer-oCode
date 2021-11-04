@@ -50,7 +50,7 @@ const storedCommands = {
     },
 }
 const findWhichEnv = function () {
-    let environment = 'dev'
+    let environment = 'local'
     if (process.env.MAG_NAME.indexOf('m2-dev') != -1) {
         environment = 'dev'
     }
