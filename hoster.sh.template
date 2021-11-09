@@ -18,3 +18,7 @@ do
   echo "$x MAG_NAME.foreverartisans.com MAG_NAME-api.foreverartisans.com" >> /etc/hosts
 done
 cat /etc/hosts
+loadaverage=`cat /proc/loadavg | awk '{print $1}'`
+localip=`hostname -I | awk '{print $2}'`
+aws --region us-east-1 cloudwatch put-metric-data --metric-name LoadAvg --namespace "ECS" --value $loadaverage --dimensions ClusterName=CLUSTER_NAME,ServiceName=SERVICE_NAME,Container=$localip
+aws --region us-east-1 cloudwatch put-metric-data --metric-name LoadAvg --namespace "ECS" --value $loadaverage --dimensions ClusterName=CLUSTER_NAME,ServiceName=SERVICE_NAME
