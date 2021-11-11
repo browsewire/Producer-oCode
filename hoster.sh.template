@@ -59,3 +59,17 @@ do
   done
   y=$(( $y + $x ))
 done
+# Orders
+ydate=`date +%Y-%m-%d%%20%H:%M:00 --date='-1 minute'`
+date=`date +%Y-%m-%d%%20%H:%M:59 --date='-1 minute'`
+token=`curl -s --location --request POST 'https://MAG_NAME-api.diamondnexus.com/rest/V1/integration/admin/token' --header 'Content-Type: application/json' --header 'Cookie: epc-initiated=1; private_content_version=cc88456a428061f03cd73398ae301ebe' --data-raw '{"username":"epasek","password":"t6eXVCB69B8nuRvH"}' | sed 's/"//g'`
+orders=`curl -s --location -g --request GET 'https://MAG_NAME-api.diamondnexus.com/rest/V1/orders/?searchCriteria[filter_groups][0][filters][0][field]=created_at&searchCriteria[filter_groups][0][filters][0][condition_type]=from&searchCriteria[filter_groups][0][filters][0][value]='$ydate'&searchCriteria[filter_groups][1][filters][0][field]=created_at&searchCriteria[filter_groups][1][filters][0][condition_type]=to&searchCriteria[filter_groups][1][filters][0][value]='$date'&searchCriteria[filter_groups][2][filters][0][field]=status&searchCriteria[filter_groups][2][filters][0][condition_type]=eq&searchCriteria[filter_groups][2][filters][0][value]=processing&searchCriteria[filter_groups][3][filters][0][field]=store_id&searchCriteria[filter_groups][3][filters][0][condition_type]=in&searchCriteria[filter_groups][3][filters][0][value]=1,5,14,12,17' --header 'Authorization: Bearer '$token'' --header 'Cookie: epc-initiated=1; private_content_version=cc88456a428061f03cd73398ae301ebe'`
+order_items=`echo $orders | jq '.items[].grand_total'`
+order_count=`echo $orders | jq '.total_count'`
+order_total=0
+for x in $order_items
+do
+  order_total=$( echo "$order_total + $x" | bc -l )
+done
+aws --region us-east-1 cloudwatch put-metric-data --metric-name OrderCount --namespace "Rest" --value $order_count
+aws --region us-east-1 cloudwatch put-metric-data --metric-name OrderTotal --namespace "Rest" --value $order_total
