@@ -13,9 +13,9 @@ do
 done < /tmp/hosts.tmp
 for x in `dig NGINX +short`
 do
-  echo "$x MAG_NAME.diamondnexus.com MAG_NAME-api.diamondnexus.com MAG_NAME-wp.diamondnexus.com" >> /etc/hosts
-  echo "$x MAG_NAME.1215diamonds.com MAG_NAME-api.1215diamonds.com MAG_NAME-wp.1215diamonds.com" >> /etc/hosts
-  echo "$x MAG_NAME.foreverartisans.com MAG_NAME-api.foreverartisans.com MAG_NAME-wp.foreverartisans.com" >> /etc/hosts
+  echo "$x MAG_NAME.diamondnexus.com MAG_NAME-api.diamondnexus.com" >> /etc/hosts
+  echo "$x MAG_NAME.1215diamonds.com MAG_NAME-api.1215diamonds.com" >> /etc/hosts
+  echo "$x MAG_NAME.foreverartisans.com MAG_NAME-api.foreverartisans.com" >> /etc/hosts
 done
 cat /etc/hosts
 loadaverage=`cat /proc/loadavg | awk '{print $1}'`
