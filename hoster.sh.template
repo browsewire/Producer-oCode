@@ -13,12 +13,63 @@ do
 done < /tmp/hosts.tmp
 for x in `dig NGINX +short`
 do
-  echo "$x MAG_NAME.diamondnexus.com MAG_NAME-api.diamondnexus.com" >> /etc/hosts
-  echo "$x MAG_NAME.1215diamonds.com MAG_NAME-api.1215diamonds.com" >> /etc/hosts
-  echo "$x MAG_NAME.foreverartisans.com MAG_NAME-api.foreverartisans.com" >> /etc/hosts
+  echo "$x MAG_NAME.diamondnexus.com MAG_NAME-api.diamondnexus.com MAG_NAME-wp.diamondnexus.com" >> /etc/hosts
+  echo "$x MAG_NAME.1215diamonds.com MAG_NAME-api.1215diamonds.com MAG_NAME-wp.1215diamonds.com" >> /etc/hosts
+  echo "$x MAG_NAME.foreverartisans.com MAG_NAME-api.foreverartisans.com MAG_NAME-wp.foreverartisans.com" >> /etc/hosts
 done
 cat /etc/hosts
 loadaverage=`cat /proc/loadavg | awk '{print $1}'`
 localip=`hostname -I | awk '{print $2}'`
 aws --region us-east-1 cloudwatch put-metric-data --metric-name LoadAvg --namespace "ECS" --value $loadaverage --dimensions ClusterName=CLUSTER_NAME,ServiceName=SERVICE_NAME,Container=$localip
 aws --region us-east-1 cloudwatch put-metric-data --metric-name LoadAvg --namespace "ECS" --value $loadaverage --dimensions ClusterName=CLUSTER_NAME,ServiceName=SERVICE_NAME
+#DN Product Counts
+count=$(( `curl -s --location --request POST 'http://MAG_NAME-wp.1215diamonds.com/wp/index.php?graphql' -H 'Cache-Control: no-cache' --header 'Authorization: Basic ZGlhbW9uZG5leHVzOk05Q3pxbVJhd3ljdDZYeHE=' --header 'Content-Type: application/json' --data-raw '{"query":"{\n  dnCategories {\n    pageInfo {\n      total\n    }\n  }\n}","variables":{}}'| jq '.data.dnCategories.pageInfo.total'` - 1 ))
+
+y=0
+while [ $y -lt $count ]
+do
+  query=`curl -s --location --request POST 'http://MAG_NAME-wp.1215diamonds.com/wp/index.php?graphql' -H 'Cache-Control: no-cache' --header 'Authorization: Basic ZGlhbW9uZG5leHVzOk05Q3pxbVJhd3ljdDZYeHE=' --header 'Content-Type: application/json' --data-raw '{"query":"{\n  dnCategories(where: {offsetPagination: {offset: '$y', size: 50}}) {\n    nodes {\n      dnCategory {\n        categoryUrlKey\n        magentoCategoryId\n      }\n    }\n  }\n}","variables":{}}'`
+
+  names=($(echo $query | jq '.data.dnCategories.nodes[].dnCategory|.categoryUrlKey'))
+  ids=($(echo $query | jq '.data.dnCategories.nodes[].dnCategory|.magentoCategoryId'))
+
+  for x in ${!ids[@]}
+  do
+    product_count=`curl -s --location --request POST 'http://MAG_NAME-api.diamondnexus.com/graphql/' -H 'Cache-Control: no-cache' --header 'Authorization: Basic ZGlhbW9uZG5leHVzOnd4OEo4N3c2' --header 'Content-Type: application/json' --header 'Cookie: epc-initiated=1' --data-raw '{"query":"{\n\tproducts(\n    filter: {\n      category_id:{eq:\"'${ids[$x]}'\"}\n    },\n    currentPage: 1, \n    pageSize: 500,\n  ) {\n    total_count\n  }\n}","variables":{}}' | jq '.data.products.total_count'`
+    aws --region us-east-1 cloudwatch put-metric-data --metric-name ActiveCount --namespace "Graphql" --value $product_count --dimensions Category=${names[$x]},Site=DN
+  done
+  y=$(( $y + $x ))
+done
+
+#TF Product Counts
+count=$(( `curl -s --location --request POST 'http://MAG_NAME-wp.1215diamonds.com/wp/index.php?graphql' --header 'Store: www_1215diamonds_com' --header 'Authorization: Basic ZGlhbW9uZG5leHVzOk05Q3pxbVJhd3ljdDZYeHE=' --header 'Content-Type: application/json' --data-raw '{"query":"{\n  tfCategories {\n    pageInfo {\n      total\n    }\n  }\n}","variables":{}}'| jq '.data.tfCategories.pageInfo.total'` - 1 ))
+
+y=0
+while [ $y -lt $count ]
+do
+  query=`curl -s --location --request POST 'http://MAG_NAME-wp.1215diamonds.com/wp/index.php?graphql' --header 'Store: www_1215diamonds_com' --header 'Authorization: Basic ZGlhbW9uZG5leHVzOk05Q3pxbVJhd3ljdDZYeHE=' --header 'Content-Type: application/json' --data-raw '{"query":"{\n  tfCategories(where: {offsetPagination: {offset: '$y', size: 50}}) {\n    nodes {\n      tfCategory {\n        categoryUrlKey\n        magentoCategoryId\n      }\n    }\n  }\n}","variables":{}}'`
+
+  names=($(echo $query | jq '.data.tfCategories.nodes[].tfCategory|.categoryUrlKey'))
+  ids=($(echo $query | jq '.data.tfCategories.nodes[].tfCategory|.magentoCategoryId'))
+
+  for x in ${!ids[@]}
+  do
+    product_count=`curl -s --location --request POST 'http://MAG_NAME-api.diamondnexus.com/graphql/' --header 'Store: www_1215diamonds_com' --header 'Authorization: Basic ZGlhbW9uZG5leHVzOnd4OEo4N3c2' --header 'Content-Type: application/json' --header 'Cookie: epc-initiated=1' --data-raw '{"query":"{\n\tproducts(\n    filter: {\n      category_id:{eq:\"'${ids[$x]}'\"}\n    },\n    currentPage: 1, \n    pageSize: 500,\n  ) {\n    total_count\n  }\n}","variables":{}}' | jq '.data.products.total_count'`
+    aws --region us-east-1 cloudwatch put-metric-data --metric-name ActiveCount --namespace "Graphql" --value $product_count --dimensions Category=${names[$x]},Site=TF
+  done
+  y=$(( $y + $x ))
+done
+# Orders
+ydate=`date +%Y-%m-%d%%20%H:%M:00 --date='-1 minute'`
+date=`date +%Y-%m-%d%%20%H:%M:59 --date='-1 minute'`
+token=`curl -s --location --request POST 'https://MAG_NAME-api.diamondnexus.com/rest/V1/integration/admin/token' --header 'Content-Type: application/json' --header 'Cookie: epc-initiated=1; private_content_version=cc88456a428061f03cd73398ae301ebe' --data-raw '{"username":"epasek","password":"t6eXVCB69B8nuRvH"}' | sed 's/"//g'`
+orders=`curl -s --location -g --request GET 'https://MAG_NAME-api.diamondnexus.com/rest/V1/orders/?searchCriteria[filter_groups][0][filters][0][field]=created_at&searchCriteria[filter_groups][0][filters][0][condition_type]=from&searchCriteria[filter_groups][0][filters][0][value]='$ydate'&searchCriteria[filter_groups][1][filters][0][field]=created_at&searchCriteria[filter_groups][1][filters][0][condition_type]=to&searchCriteria[filter_groups][1][filters][0][value]='$date'&searchCriteria[filter_groups][2][filters][0][field]=status&searchCriteria[filter_groups][2][filters][0][condition_type]=eq&searchCriteria[filter_groups][2][filters][0][value]=processing&searchCriteria[filter_groups][3][filters][0][field]=store_id&searchCriteria[filter_groups][3][filters][0][condition_type]=in&searchCriteria[filter_groups][3][filters][0][value]=1,5,14,12,17' --header 'Authorization: Bearer '$token'' --header 'Cookie: epc-initiated=1; private_content_version=cc88456a428061f03cd73398ae301ebe'`
+order_items=`echo $orders | jq '.items[].grand_total'`
+order_count=`echo $orders | jq '.total_count'`
+order_total=0
+for x in $order_items
+do
+  order_total=$( echo "$order_total + $x" | bc -l )
+done
+aws --region us-east-1 cloudwatch put-metric-data --metric-name OrderCount --namespace "Rest" --value $order_count
+aws --region us-east-1 cloudwatch put-metric-data --metric-name OrderTotal --namespace "Rest" --value $order_total
