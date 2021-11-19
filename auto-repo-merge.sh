@@ -66,31 +66,35 @@ try_merge()
     then
         warning already $branch
         pr_num=`echo $branch | sed 's/origin\/pr\///g'`
+	ticket=`curl -X GET -H "Accept: application/vnd.github.v3+json" -H "Authorization: token $GITOAUTH" https://api.github.com/repos/forevercompanies/producer/issues/$pr_num/comments | grep "CU\-" | sed 's/.*CU-//g' | awk '{print $1}'`
         rm_conflict ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
-        mark_deployed ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
+        mark_deployed ForeverCompanies/producer $GITOAUTH $pr_num $2 $CLICKAUTH $ticket > /dev/null 2>&1
         return
     fi
     if run git merge --ff-only $branch $commit
     then
         good fast $branch $commit
         pr_num=`echo $branch | sed 's/origin\/pr\///g'`
+	ticket=`curl -X GET -H "Accept: application/vnd.github.v3+json" -H "Authorization: token $GITOAUTH" https://api.github.com/repos/forevercompanies/producer/issues/$pr_num/comments | grep "CU\-" | sed 's/.*CU-//g' | awk '{print $1}'`
         rm_conflict ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
-        mark_deployed ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
+        mark_deployed ForeverCompanies/producer $GITOAUTH $pr_num $2 $CLICKAUTH $ticket > /dev/null 2>&1
         return
     fi
     if run git merge $branch $commit
     then
         good merge $branch $commit
         pr_num=`echo $branch | sed 's/origin\/pr\///g'`
+	ticket=`curl -X GET -H "Accept: application/vnd.github.v3+json" -H "Authorization: token $GITOAUTH" https://api.github.com/repos/forevercompanies/producer/issues/$pr_num/comments | grep "CU\-" | sed 's/.*CU-//g' | awk '{print $1}'`
         rm_conflict ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
-        mark_deployed ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
+        mark_deployed ForeverCompanies/producer $GITOAUTH $pr_num $2 $CLICKAUTH $ticket > /dev/null 2>&1
         return
     fi
     git merge --abort
     error abort $branch $commit
     pr_num=`echo $branch | sed 's/origin\/pr\///g'`
+    ticket=`curl -X GET -H "Accept: application/vnd.github.v3+json" -H "Authorization: token $GITOAUTH" https://api.github.com/repos/forevercompanies/producer/issues/$pr_num/comments | grep "CU\-" | sed 's/.*CU-//g' | awk '{print $1}'`
     mark_conflict ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
-    rm_deployed ForeverCompanies/producer $GITOAUTH $pr_num $2 > /dev/null 2>&1
+    rm_deployed ForeverCompanies/producer $GITOAUTH $pr_num $2 $CLICKAUTH $ticket > /dev/null 2>&1
     return
 }
 
