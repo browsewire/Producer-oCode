@@ -20,10 +20,20 @@ for issue in issues.json()["items"]:
 
 mark_deployed() {
   curl -d '{"labels": ["deployed_'$4'"]}' -X POST -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels
+  if [ $4 == "staging" ]
+  then
+    curl -X POST -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"value\": \"1ca56d76-4094-4d63-ad89-b6b8102a3df4\" }" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
+    curl -X PUT -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"status\": \"TESTING/QA\" }" https://api.clickup.com/api/v2/task/$6/
+  elif [ $4 == "develop" ]
+  then
+    curl -X POST -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"value\": \"d0dd0c44-c779-4e44-88d2-35dfa4d74075\" }" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
+  fi
 }
 
 rm_deployed() {
   curl -X DELETE -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels/deployed_$4
+  curl -X DELETE -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
+  curl -X PUT -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"status\": \"DEV COMPLETE PR READY\" }" https://api.clickup.com/api/v2/task/$6/
 }
 
 mark_conflict() {
