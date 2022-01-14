@@ -5,8 +5,8 @@
 
 const express = require('express')
 const app = express()
-const producer = require('./broker')
 const { processStoredCommand, isJson, getTimeStamp } = require('./commands')
+const producer = require('./broker')
 
 let displaymessages = ['Producer screen initialized.']
 
@@ -111,54 +111,54 @@ const ports = {
     }),
     dnVarnishJson: JSON.stringify({
         siteId: 'dn',
-        cmd: 'flushVarnish',
+        cmd: 'multiFlushVarnish',
         key: 'keyfv' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: [],
+        data: ['/'],
     }),
     tfVarnishJson: JSON.stringify({
         siteId: 'tf',
-        cmd: 'flushVarnish',
+        cmd: 'multiFlushVarnish',
         key: 'keyfv' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: [],
+        data: ['/'],
     }),
     faVarnishJson: JSON.stringify({
         siteId: 'fa',
-        cmd: 'flushVarnish',
+        cmd: 'multiFlushVarnish',
         key: 'keyfv' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: [],
+        data: ['/'],
     }),
     dnVarnishApiJson: JSON.stringify({
         siteId: 'dn',
         api: true,
-        cmd: 'flushVarnish',
+        cmd: 'multiFlushVarnish',
         key: 'keyfv' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: [],
+        data: ['/'],
     }),
     tfVarnishApiJson: JSON.stringify({
         siteId: 'tf',
         api: true,
-        cmd: 'flushVarnish',
+        cmd: 'multiFlushVarnish',
         key: 'keyfv' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: [],
+        data: ['/'],
     }),
     faVarnishApiJson: JSON.stringify({
         siteId: 'fa',
         api: true,
-        cmd: 'flushVarnish',
+        cmd: 'multiFlushVarnish',
         key: 'keyfv' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: [],
+        data: ['/'],
     }),
 }
 
@@ -199,6 +199,22 @@ app.get('/', async (req, res) => {
             }
         }
         if (req.query.task) {
+            //if a task is not json, it must be parsed into the format
+            //non json tasks are legacy tasks that go directly to rabbit mq
+            //these are like
+            //cleanelder--tf
+            //and
+            //task=
+            /*
+            {
+                siteId: 'api',
+                cmd: 'rabbitmq',
+                key: 'rmq' + Math.random(),
+                page: 1,
+                totalPages: 1,
+                data: ['/*'],
+            }
+            */
             if (isJson(req.query.task)) {
                 processStoredCommand(req.query.task).then((messages) => {
                     console.log('messages', messages)
@@ -231,11 +247,28 @@ app.get('/', async (req, res) => {
                     displaymessages.unshift(dmsg + ' Time: ' + dateStr)
                 }
             } else {
+                //export commands are just query strings like
+                //?task=export&site=fa&list=
+                //it can also look like
+                //?task=export--fa
+                let generatedJsonTask = {
+                    page: 1,
+                    totalPages: 1,
+                    data: [],
+                    cmd: 'rabbitmq',
+                    key: 'generatedJsonTask' + Math.random(),
+                }
                 for (arg in req.query) {
                     console.log('arg', arg, req.query[arg])
+                    generatedJsonTask[arg] = req.query[arg]
+
                     if (i > 0) {
                         producerMessage += '&'
                     }
+                    //when this was sapper the command was export
+                    //this was switched to exportexport elder
+                    //when elder replaced sapper
+                    //here we turn export into exportelder
                     if (arg == 'task') {
                         let taskSite = req.query.task.split('--')
                         if (taskSite[0] == 'export') {
@@ -248,6 +281,7 @@ app.get('/', async (req, res) => {
                         }
                         if (taskSite.length > 1) {
                             producerMessage += '&site=' + taskSite[1]
+                            generatedJsonTask.siteId = taskSite[1]
                         }
                     } else {
                         if (Array.isArray(req.query[arg])) {
@@ -262,6 +296,19 @@ app.get('/', async (req, res) => {
                     }
                     i++
                 }
+                generatedJsonTask.producerMessage = producerMessage
+                if (typeof generatedJsonTask.site != 'undefined') {
+                    generatedJsonTask.siteId = generatedJsonTask.site
+                }
+                if (
+                    typeof generatedJsonTask.task != 'undefined' &&
+                    generatedJsonTask.task == 'export'
+                ) {
+                    generatedJsonTask.task = 'exportelder'
+                }
+
+                console.log('generatedJsonTask', generatedJsonTask)
+
                 if (producerMessage.indexOf('task=export') != -1) {
                     //flush the varnish cache before the export
                     console.log(
@@ -282,20 +329,6 @@ app.get('/', async (req, res) => {
                             }
                         }
                     }
-                    // processStoredCommand(
-                    //     JSON.stringify({
-                    //         siteId: varnishSiteId,
-                    //         api: true,
-                    //         cmd: 'multiFlushVarnish',
-                    //         key: 'keyfv' + Math.random(),
-                    //         page: 1,
-                    //         totalPages: 1,
-                    //         data: ['/graphql/'],
-                    //     })
-                    // ).then((messages) => {
-                    // for (let m = 0; m < messages.length; m++) {
-                    //     displaymessages.unshift(messages[m])
-                    // }
                     //flush the varnish and aws cache before the export
                     console.log('in export before api flush')
                     processStoredCommand(
@@ -311,16 +344,37 @@ app.get('/', async (req, res) => {
                         for (let m = 0; m < messages.length; m++) {
                             displaymessages.unshift(messages[m])
                         }
-                        producer.start(producerMessage).catch((err) => {
-                            console.log(err)
+                        console.log(
+                            'after flush generatedJsonTask',
+                            generatedJsonTask
+                        )
+                        processStoredCommand(
+                            JSON.stringify(generatedJsonTask)
+                        ).then((messages) => {
+                            for (let m = 0; m < messages.length; m++) {
+                                displaymessages.unshift(messages[m])
+                            }
                         })
+
+                        // producer.start(producerMessage).catch((err) => {
+                        //     console.log(err)
+                        // })
                     })
                     //})
                 } else {
-                    console.log('producer straight up start')
-                    producer.start(producerMessage).catch((err) => {
-                        console.log(err)
+                    console.log(
+                        'producer straight up start, this is not an export command so no pre-flush'
+                    )
+                    processStoredCommand(
+                        JSON.stringify(generatedJsonTask)
+                    ).then((messages) => {
+                        for (let m = 0; m < messages.length; m++) {
+                            displaymessages.unshift(messages[m])
+                        }
                     })
+                    // producer.start(producerMessage).catch((err) => {
+                    //     console.log(err)
+                    // })
                 }
                 let dateStr = getTimeStamp()
                 displaymessages.unshift(

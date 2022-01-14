@@ -1,3 +1,11 @@
+/*
+This is the meat and potatoes rabbit mq file
+This will parse the queue ID from the message
+sent.
+So the message will look something like "site=dn&task=exportelder"
+And dn will be the queue ID 
+*/
+
 const amqp = require('amqplib')
 const queues = {
     dn: process.env.MESSAGE_QUEUE_NAME_DN,
@@ -5,15 +13,17 @@ const queues = {
     tf: process.env.MESSAGE_QUEUE_NAME_TF,
 }
 
-// const winston = require('winston');
-
 module.exports.start = async (message) => {
     let queue
+    //split the message string
+    //"site=dn&task=exportelder"
     let messageParts = message.split('&')
-    // let taskstr = ''
-    // const [taskname, site] = taskstr.split('--')
     let taskname = ''
     let site = ''
+
+    console.log('messageParts', messageParts)
+    //split the key=value pairs
+    //messageParts [ 'task=exportelder', 'site=fa', 'list=' ]
     for (let i = 0; i < messageParts.length; i++) {
         let kv = messageParts[i].split('=')
         if (kv.length != 2) {
@@ -21,10 +31,12 @@ module.exports.start = async (message) => {
         }
         let k = kv[0]
         let v = kv[1]
-
+        //this will be the message queue
         if (k == 'site') {
             site = v
         } else {
+            //these are the task parts
+            //a task could be task=export
             if (taskname.length > 0) {
                 taskname += '&'
             }

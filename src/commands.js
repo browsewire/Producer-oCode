@@ -5,6 +5,7 @@ const util = require('util')
 /* promisify the exec function to run bash scripts async */
 const exec = util.promisify(require('child_process').exec)
 const MurmurHash3 = require('imurmurhash')
+const producer = require('./broker')
 
 /*
 Distributions:
@@ -198,6 +199,34 @@ const sleep = async function (ms) {
     return sleepMessages
 }
 const commands = {
+    rabbitmq: async function (config) {
+        console.log('config in commands rabbitmq', config)
+        let producerMessage = ''
+        if (typeof config.producerMessage == 'undefined') {
+            for (arg in config) {
+                producerMessage += arg + '='
+                if (typeof config[arg] == 'Object') {
+                    producerMessage += config[arg].join(',')
+                } else {
+                    producerMessage += config.arg
+                }
+                producerMessage += '&'
+            }
+        } else {
+            producerMessage = config.producerMessage
+        }
+        console.log('producerMessage in rabbitmq command', producerMessage)
+        producer.start(producerMessage).catch((err) => {
+            console.log(err)
+        })
+        return [
+            config.siteId + ' ' + config.task + ' started.' + getTimeStamp(),
+        ]
+    },
+    rebuildTestCommand: async function (config) {
+        console.log('rebuildTestCommand', config)
+        return ['rebuildTestCommand', config]
+    },
     multiFlushVarnish: async function (config) {
         let messages = []
         if (typeof config.paths == 'undefined' || config.paths.length == 0) {
