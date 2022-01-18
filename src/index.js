@@ -5,10 +5,15 @@
 
 const express = require('express')
 const app = express()
-const { processStoredCommand, isJson, getTimeStamp } = require('./commands')
-const producer = require('./broker')
+const {
+    processStoredCommand,
+    isJson,
+    getTimeStamp,
+    makeId,
+} = require('./commands')
+// const producer = require('./broker')
 
-let displaymessages = ['Producer screen initialized.']
+displaymessages = ['Producer screen initialized.']
 
 let mag_url =
     ['m2-dev', 'm2-staging', 'www'].indexOf(process.env.MAG_NAME) != -1
@@ -174,40 +179,30 @@ app.get('/', async (req, res) => {
     try {
         /*pass tasks from get query into the rabbit mq producer to send a signal to the apps */
         let i = 0
+        /*
+        the producer message is a key value string joined by
+        ampersands (a url querystring basically) that we send to 
+        the apps through rabbitmq, that string is parsed
+        to allow us to pass arguments in addition to a command
+        such as the export routes or export list
+        */
         let producerMessage = ''
         if (req.query.displaymessage) {
-            // if (req.query.displaymessage == 'doit') {
-            //     processStoredCommand(
-            //         JSON.stringify({
-            //             siteId: 'api',
-            //             cmd: 'cacheclear',
-            //             key: 'hey' + Math.random(),
-            //             page: 1,
-            //             totalPages: 1,
-            //             data: ['/*'],
-            //         })
-            //     ).then((messages) => {
-            //         console.log('messages', messages)
-            //         for (let m = 0; m < messages.length; m++) {
-            //             displaymessages.unshift(messages[m])
-            //         }
-            //     })
-            // }
             displaymessages.unshift(req.query.displaymessage)
             if (displaymessages.length > 200) {
                 displaymessages.pop()
             }
         }
         if (req.query.task) {
-            //if a task is not json, it must be parsed into the format
-            //non json tasks are legacy tasks that go directly to rabbit mq
-            //these are like
-            //cleanelder--tf
-            //and
-            //task=
             /*
+            if a task is not json, it must be parsed into the format
+            non json tasks are legacy tasks that go directly to rabbit mq
+            these are like task=cleanelder--tf and task=exportelder&site=dn
+            the non json commands are passed directly to the rabbitmq
+            command to go to the apps, if they are export commands, a graphql flush
+            is run first
             {
-                siteId: 'api',
+                siteId: 'dn',
                 cmd: 'rabbitmq',
                 key: 'rmq' + Math.random(),
                 page: 1,
@@ -215,43 +210,14 @@ app.get('/', async (req, res) => {
                 data: ['/*'],
             }
             */
-            if (isJson(req.query.task)) {
-                processStoredCommand(req.query.task).then((messages) => {
-                    console.log('messages', messages)
-                    for (let m = 0; m < messages.length; m++) {
-                        displaymessages.unshift(messages[m])
-                    }
-                })
 
-                let taskObj = JSON.parse(req.query.task)
-                if (
-                    typeof taskObj.page != 'undefined' &&
-                    typeof taskObj.totalPages != 'undefined' &&
-                    taskObj.page == taskObj.totalPages
-                ) {
-                    let valCount = 0
-                    let dmsg = ''
-                    for (val in taskObj) {
-                        if (valCount > 0) {
-                            dmsg += ' '
-                        }
-                        if (val === 'cmd') {
-                            dmsg += 'Command: ' + taskObj[val]
-                        }
-                        if (['siteId'].indexOf(val) != -1) {
-                            dmsg += 'SiteId: ' + taskObj[val]
-                        }
-                        valCount++
-                    }
-                    let dateStr = getTimeStamp()
-                    displaymessages.unshift(dmsg + ' Time: ' + dateStr)
-                }
-            } else {
+            let generatedJsonTask
+            if (!isJson(req.query.task)) {
                 //export commands are just query strings like
-                //?task=export&site=fa&list=
+                //?task=export&site=fa&list=&routes=home,blog
                 //it can also look like
                 //?task=export--fa
-                let generatedJsonTask = {
+                generatedJsonTask = {
                     page: 1,
                     totalPages: 1,
                     data: [],
@@ -259,16 +225,21 @@ app.get('/', async (req, res) => {
                     key: 'generatedJsonTask' + Math.random(),
                 }
                 for (arg in req.query) {
-                    console.log('arg', arg, req.query[arg])
                     generatedJsonTask[arg] = req.query[arg]
 
                     if (i > 0) {
                         producerMessage += '&'
                     }
-                    //when this was sapper the command was export
-                    //this was switched to exportexport elder
-                    //when elder replaced sapper
-                    //here we turn export into exportelder
+
+                    /*
+                    when elder replaced sapper
+                    here we turn export into exportelder
+                    we maintain this in case BE or other devs
+                    just send the export string
+                    we may also see strings like export--dn
+                    so we check to see if the site id is included in the task
+                    argument
+                    */
                     if (arg == 'task') {
                         let taskSite = req.query.task.split('--')
                         if (taskSite[0] == 'export') {
@@ -276,7 +247,6 @@ app.get('/', async (req, res) => {
                         }
                         producerMessage += 'task=' + taskSite[0]
                         if (arg != 'task' && arg != 'displaymessage') {
-                            console.log(arg, req.query[arg])
                             producerMessage += arg + '=' + req.query[arg]
                         }
                         if (taskSite.length > 1) {
@@ -285,7 +255,6 @@ app.get('/', async (req, res) => {
                         }
                     } else {
                         if (Array.isArray(req.query[arg])) {
-                            console.log('is array')
                             if (req.query[arg].length > 0) {
                                 producerMessage +=
                                     arg + '=' + req.query[arg].join(',')
@@ -297,90 +266,69 @@ app.get('/', async (req, res) => {
                     i++
                 }
                 generatedJsonTask.producerMessage = producerMessage
-                if (typeof generatedJsonTask.site != 'undefined') {
-                    generatedJsonTask.siteId = generatedJsonTask.site
-                }
-                if (
-                    typeof generatedJsonTask.task != 'undefined' &&
-                    generatedJsonTask.task == 'export'
-                ) {
-                    generatedJsonTask.task = 'exportelder'
-                }
-
-                console.log('generatedJsonTask', generatedJsonTask)
-
-                if (producerMessage.indexOf('task=export') != -1) {
-                    //flush the varnish cache before the export
-                    console.log(
-                        'attempting varnish flush in export before api flush'
-                    )
-                    //redundant parsing to get siteId
-                    let producerMessageParts = producerMessage.split('&')
-                    let varnishSiteId = ''
-                    for (
-                        let pmp = 0;
-                        pmp < producerMessageParts.length;
-                        pmp++
-                    ) {
-                        if (producerMessageParts[pmp].indexOf('site') != -1) {
-                            let kv = producerMessageParts[pmp].split('=')
-                            if (typeof kv[1] != 'undefined') {
-                                varnishSiteId = kv[1]
-                            }
-                        }
-                    }
-                    //flush the varnish and aws cache before the export
-                    console.log('in export before api flush')
-                    processStoredCommand(
-                        JSON.stringify({
-                            siteId: varnishSiteId,
-                            cmd: 'cacheclear',
-                            key: 'keyapi' + Math.random(),
-                            page: 1,
-                            totalPages: 1,
-                            data: ['/graphql*', '/graphql/*'],
-                        })
-                    ).then((messages) => {
-                        for (let m = 0; m < messages.length; m++) {
-                            displaymessages.unshift(messages[m])
-                        }
-                        console.log(
-                            'after flush generatedJsonTask',
-                            generatedJsonTask
-                        )
-                        processStoredCommand(
-                            JSON.stringify(generatedJsonTask)
-                        ).then((messages) => {
-                            for (let m = 0; m < messages.length; m++) {
-                                displaymessages.unshift(messages[m])
-                            }
-                        })
-
-                        // producer.start(producerMessage).catch((err) => {
-                        //     console.log(err)
-                        // })
-                    })
-                    //})
-                } else {
-                    console.log(
-                        'producer straight up start, this is not an export command so no pre-flush'
-                    )
-                    processStoredCommand(
-                        JSON.stringify(generatedJsonTask)
-                    ).then((messages) => {
-                        for (let m = 0; m < messages.length; m++) {
-                            displaymessages.unshift(messages[m])
-                        }
-                    })
-                    // producer.start(producerMessage).catch((err) => {
-                    //     console.log(err)
-                    // })
-                }
-                let dateStr = getTimeStamp()
-                displaymessages.unshift(
-                    'Command: ' + producerMessage + '. Time: ' + dateStr
-                )
+            } else {
+                generatedJsonTask = JSON.parse(req.query.task)
             }
+
+            if (typeof generatedJsonTask.site != 'undefined') {
+                generatedJsonTask.siteId = generatedJsonTask.site
+            }
+            if (
+                typeof generatedJsonTask.task != 'undefined' &&
+                generatedJsonTask.task == 'export'
+            ) {
+                generatedJsonTask.task = 'exportelder'
+            }
+
+            console.log('generatedJsonTask', generatedJsonTask)
+
+            if (
+                typeof generatedJsonTask.task != 'undefined' &&
+                generatedJsonTask.task.indexOf('export') != -1
+            ) {
+                //flush the varnish cache before the export
+                console.log(
+                    'attempting varnish flush in export before graphql flush'
+                )
+
+                //flush the varnish and aws cache before the export
+                console.log('in export before api flush')
+                let stackKey = generatedJsonTask.siteId + 'stack' + makeId(10)
+
+                processStoredCommand(
+                    JSON.stringify({
+                        siteId: generatedJsonTask.siteId,
+                        cmd: 'cacheclear',
+                        key: 'keyapi' + makeId(10),
+                        page: 1,
+                        totalPages: 1,
+                        stackKey: stackKey,
+                        stackPage: 2,
+                        stackTotalPages: 2,
+                        data: ['/graphql*', '/graphql/*'],
+                    })
+                ).then((messages) => {
+                    for (let m = 0; m < messages.length; m++) {
+                        displaymessages.unshift(messages[m])
+                    }
+                })
+                generatedJsonTask.stackKey = stackKey
+                generatedJsonTask.stackPage = 2
+                generatedJsonTask.stackTotalPages = 2
+            }
+
+            processStoredCommand(JSON.stringify(generatedJsonTask)).then(
+                (messages) => {
+                    for (let m = 0; m < messages.length; m++) {
+                        displaymessages.unshift(messages[m])
+                    }
+                }
+            )
+
+            // let dateStr = getTimeStamp()
+            // displaymessages.unshift(
+            //     'Command: ' + producerMessage + '. Time: ' + dateStr
+            // )
         }
         if (Object.keys(req.query).length != 0) {
             res.redirect('/')

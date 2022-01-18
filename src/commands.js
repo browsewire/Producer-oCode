@@ -49,6 +49,28 @@ const storedCommands = {
         data: [],
         pages: 0,
     },
+    stacks: {
+        dn: {
+            stackKey: '',
+            commands: [],
+        },
+        tf: {
+            stackKey: '',
+            commands: [],
+        },
+        fa: {
+            stackKey: '',
+            commands: [],
+        },
+        api: {
+            stackKey: '',
+            commands: [],
+        },
+        other: {
+            stackKey: '',
+            commands: [],
+        },
+    },
 }
 const findWhichEnv = function () {
     let environment = 'local'
@@ -93,6 +115,19 @@ const readdirChronoSorted = async function (dirpath, order) {
 
 const getLogDir = function () {
     return __dirname + '/logs/cache/'
+}
+
+const makeId = function (length) {
+    var result = ''
+    var characters =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    var charactersLength = characters.length
+    for (var i = 0; i < length; i++) {
+        result += characters.charAt(
+            Math.floor(Math.random() * charactersLength)
+        )
+    }
+    return result
 }
 
 /*
@@ -737,7 +772,77 @@ const processStoredCommand = async function (jsonObj) {
                 typeof commands[jsonObj.cmd] != 'undefined'
             ) {
                 jsonObj.data = storedCommands[jsonObj.siteId].data
-                messages = await commands[jsonObj.cmd](jsonObj)
+                if (
+                    typeof jsonObj.stackPage != 'undefined' &&
+                    typeof jsonObj.stackTotalPages != 'undefined' &&
+                    typeof jsonObj.stackKey != 'undefined'
+                ) {
+                    if (
+                        jsonObj.stackKey !=
+                        storedCommands.stacks[jsonObj.siteId].stackKey
+                    ) {
+                        // console.log(
+                        //     'Old stackKey was: ' +
+                        //         storedCommands.stacks[jsonObj.siteId].stackKey +
+                        //         '  -- New stackKey supplied: ' +
+                        //         jsonObj.stackKey +
+                        //         ' resetting stack '
+                        // )
+                        storedCommands.stacks[jsonObj.siteId].stackKey =
+                            jsonObj.stackKey
+                        storedCommands.stacks[jsonObj.siteId].commands = []
+                    }
+                    // console.log('adding stored command to stack', jsonObj)
+                    storedCommands.stacks[jsonObj.siteId].commands.push(jsonObj)
+
+                    messages = [
+                        'Adding command to stack ' +
+                            jsonObj.siteId +
+                            ' ' +
+                            jsonObj.cmd,
+                    ]
+                    if (
+                        storedCommands.stacks[jsonObj.siteId].commands
+                            .length === jsonObj.stackTotalPages
+                    ) {
+                        for (let m = 0; m < messages.length; m++) {
+                            displaymessages.unshift(messages)
+                        }
+                        messages = []
+                        //sort them based on page number
+                        storedCommands.stacks[jsonObj.siteId].commands.sort(
+                            (a, b) => {
+                                return a.stackPage - b.stackPage
+                            }
+                        )
+                        console.log(
+                            'sorted commands',
+                            storedCommands.stacks[jsonObj.siteId].commands
+                        )
+                        while (
+                            storedCommands.stacks[jsonObj.siteId].commands
+                                .length > 0
+                        ) {
+                            let stackCmd =
+                                storedCommands.stacks[
+                                    jsonObj.siteId
+                                ].commands.shift()
+                            displaymessages.unshift(
+                                'running command: ' + JSON.stringify(stackCmd)
+                            )
+                            let cmdMessages = await commands[stackCmd.cmd](
+                                stackCmd
+                            )
+                            for (let m = 0; m < cmdMessages.length; m++) {
+                                displaymessages.unshift('cmdMessage ' + m)
+                                displaymessages.unshift(cmdMessages[m])
+                            }
+                            //messages = messages.concat(cmdMessages)
+                        }
+                    }
+                } else {
+                    messages = await commands[jsonObj.cmd](jsonObj)
+                }
             }
         }
     }
@@ -768,4 +873,5 @@ module.exports = {
     convertTZ,
     getTimeStamp,
     processStoredCommand,
+    makeId,
 }
