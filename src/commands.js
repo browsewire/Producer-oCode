@@ -313,7 +313,7 @@ const commands = {
                     serviceName +
                     ' --cluster $NAMESPACE-cluster | jq .services[].deployments[].runningCount`;' +
                     'while [ $count -lt 1 ];' +
-                    'do;' +
+                    'do ' +
                     'count=`aws --region us-east-1 ecs describe-services --service  ' +
                     serviceName +
                     ' --cluster ' +
