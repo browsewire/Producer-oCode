@@ -308,7 +308,7 @@ const commands = {
                     serviceName +
                     ' --cluster  ' +
                     namespace +
-                    '-cluster --desired-count 1 | jq`;' +
+                    '-cluster --desired-count 1 | jq .`;' +
                     'count=`aws --region us-east-1 ecs describe-services --service  ' +
                     serviceName +
                     ' --cluster $NAMESPACE-cluster | jq .services[].deployments[].runningCount`;' +
@@ -328,7 +328,7 @@ const commands = {
                     serviceName +
                     ' --cluster ' +
                     namespace +
-                    '-cluster --desired-count 0 | jq`'
+                    '-cluster --desired-count 0 | jq .`'
             }
 
             if (execCmd.length > 0) {
