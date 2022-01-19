@@ -304,17 +304,17 @@ const commands = {
             if (config.containerCmd === 'up') {
                 //Producer needs to run this before each export to start the service
                 execCmd =
-                    'ignore=`aws ecs update-service --service ' +
+                    'ignore=`aws --region us-east-1 ecs update-service --service ' +
                     serviceName +
                     ' --cluster  ' +
                     namespace +
-                    '-cluster --desired-count 1 | jq`\\\n' +
-                    'count=`aws ecs describe-services --service  ' +
+                    '-cluster --desired-count 1 | jq`' +
+                    'count=`aws --region us-east-1 ecs describe-services --service  ' +
                     serviceName +
                     ' --cluster $NAMESPACE-cluster | jq .services[].deployments[].runningCount`\\\n' +
                     'while [ $count -lt 1 ]\\\n' +
                     'do\\\n' +
-                    'count=`aws ecs describe-services --service  ' +
+                    'count=`aws --region us-east-1 ecs describe-services --service  ' +
                     serviceName +
                     ' --cluster ' +
                     namespace +
@@ -324,7 +324,7 @@ const commands = {
             if (config.containerCmd === 'down') {
                 //after finishing export
                 execCmd =
-                    ' ignore=`aws ecs update-service --service ' +
+                    ' ignore=`aws --region us-east-1 ecs update-service --service ' +
                     serviceName +
                     ' --cluster ' +
                     namespace +
