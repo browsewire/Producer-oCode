@@ -86,6 +86,23 @@ const findWhichEnv = function () {
     return environment
 }
 
+const addDisplayMessages = function (messages) {
+    //uses global displaymessages
+    if (!Array.isArray(messages)) {
+        messages = [messages]
+    }
+    //log them so we can see the messages in the logs too
+    console.log('displayMessages', messages)
+    for (let m = 0; m < messages.length; m++) {
+        displaymessages.unshift(messages[m])
+    }
+
+    let arrLength = displaymessages.length
+    let maxNumber = 300
+    if (arrLength > maxNumber) {
+        displaymessages.splice(0, arrLength - maxNumber)
+    }
+}
 /*
 Read a directory and sort the results by when they were last editted
 */
@@ -892,12 +909,12 @@ const processStoredCommand = async function (jsonObj) {
                     // console.log('adding stored command to stack', jsonObj)
                     storedCommands.stacks[jsonObj.siteId].commands.push(jsonObj)
 
-                    messages = [
+                    addDisplayMessages(
                         'Adding command to stack ' +
                             jsonObj.siteId +
                             ' ' +
-                            jsonObj.cmd,
-                    ]
+                            jsonObj.cmd
+                    )
                     if (
                         storedCommands.stacks[jsonObj.siteId].commands
                             .length === jsonObj.stackTotalPages
@@ -905,47 +922,53 @@ const processStoredCommand = async function (jsonObj) {
                         for (let m = 0; m < messages.length; m++) {
                             displaymessages.unshift(messages)
                         }
-                        messages = []
-                        //sort them based on page number
+                        //sort them based on page number lowest first then highest
                         storedCommands.stacks[jsonObj.siteId].commands.sort(
                             (a, b) => {
                                 return a.stackPage - b.stackPage
                             }
                         )
-                        console.log(
-                            'sorted commands',
-                            storedCommands.stacks[jsonObj.siteId].commands
-                        )
+                        // console.log(
+                        //     'sorted commands',
+                        //     storedCommands.stacks[jsonObj.siteId].commands
+                        // )
                         while (
                             storedCommands.stacks[jsonObj.siteId].commands
                                 .length > 0
                         ) {
+                            //pop the lowest numbered command off the command stack
+                            //and run it
                             let stackCmd =
                                 storedCommands.stacks[
                                     jsonObj.siteId
                                 ].commands.shift()
-                            displaymessages.unshift(
-                                'running command: ' + JSON.stringify(stackCmd)
-                            )
-                            console.log(
-                                'running command: ' + JSON.stringify(stackCmd)
+                            addDisplayMessages(
+                                'running command: ' +
+                                    JSON.stringify(stackCmd, null, 4) +
+                                    '\n' +
+                                    getTimeStamp()
                             )
                             let cmdMessages = await commands[stackCmd.cmd](
                                 stackCmd
                             )
-                            for (let m = 0; m < cmdMessages.length; m++) {
-                                displaymessages.unshift(cmdMessages[m])
-                            }
-                            //messages = messages.concat(cmdMessages)
+                            addDisplayMessages(cmdMessages)
                         }
                     }
                 } else {
-                    messages = await commands[jsonObj.cmd](jsonObj)
+                    displaymessages.unshift(
+                        'running command: ' +
+                            JSON.stringify(jsonObj, null, 4) +
+                            '\n' +
+                            getTimeStamp()
+                    )
+                    let cmdMessages = await commands[jsonObj.cmd](jsonObj)
+                    addDisplayMessages(cmdMessages)
                 }
             }
         }
     }
-    return messages
+    addDisplayMessages(messages)
+    return true
 }
 
 const isJson = function (item) {
@@ -973,4 +996,5 @@ module.exports = {
     getTimeStamp,
     processStoredCommand,
     makeId,
+    addDisplayMessages,
 }

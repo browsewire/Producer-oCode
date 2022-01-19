@@ -8,13 +8,13 @@ const app = express()
 const {
     processStoredCommand,
     isJson,
-    getTimeStamp,
+    addDisplayMessages,
     makeId,
 } = require('./commands')
 // const producer = require('./broker')
 
 //this is a global variable, so not defined with let, const or var
-displaymessages = ['Producer screen initialized.']
+global.displaymessages = ['Producer screen initialized.']
 
 let mag_url =
     ['m2-dev', 'm2-staging', 'www'].indexOf(process.env.MAG_NAME) != -1
@@ -191,10 +191,7 @@ app.get('/', async (req, res) => {
 
         //if this is a display message, just pop it right up
         if (req.query.displaymessage) {
-            displaymessages.unshift(req.query.displaymessage)
-            if (displaymessages.length > 200) {
-                displaymessages.pop()
-            }
+            addDisplayMessages(req.query.displaymessage)
         }
         //if this is a task, check if it's parsable json or not,
         //if not then make it into a standard format json object
@@ -342,11 +339,7 @@ app.get('/', async (req, res) => {
                         stackTotalPages: 3,
                         data: [],
                     })
-                ).then((messages) => {
-                    for (let m = 0; m < messages.length; m++) {
-                        displaymessages.unshift(messages[m])
-                    }
-                })
+                )
 
                 //flush the varnish and aws cache before the export
                 processStoredCommand(
@@ -361,11 +354,7 @@ app.get('/', async (req, res) => {
                         stackTotalPages: 3,
                         data: ['/graphql*', '/graphql/*'],
                     })
-                ).then((messages) => {
-                    for (let m = 0; m < messages.length; m++) {
-                        displaymessages.unshift(messages[m])
-                    }
-                })
+                )
 
                 //modify the current task to go onto the stack
                 generatedJsonTask.stackKey = stackKey
@@ -374,13 +363,7 @@ app.get('/', async (req, res) => {
             }
 
             //run the command
-            processStoredCommand(JSON.stringify(generatedJsonTask)).then(
-                (messages) => {
-                    for (let m = 0; m < messages.length; m++) {
-                        displaymessages.unshift(messages[m])
-                    }
-                }
-            )
+            processStoredCommand(JSON.stringify(generatedJsonTask))
         }
         if (Object.keys(req.query).length != 0) {
             res.redirect('/')
