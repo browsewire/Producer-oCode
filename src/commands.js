@@ -340,6 +340,8 @@ const commands = {
                 } else {
                     let execMessages = await execFunction(execCmd)
                     messages = messages.concat(execMessages.messages)
+                    //wait 5 seconds after the container starts
+                    //up to give the initial commands time to run
                     if (config.containerCmd === 'up') {
                         let sleepMessages = await sleep(5000)
                         messages = messages.concat(sleepMessages)
