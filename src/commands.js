@@ -308,23 +308,23 @@ const commands = {
                     serviceName +
                     ' --cluster  ' +
                     namespace +
-                    '-cluster --desired-count 1 | jq`' +
+                    '-cluster --desired-count 1 | jq`;' +
                     'count=`aws --region us-east-1 ecs describe-services --service  ' +
                     serviceName +
-                    ' --cluster $NAMESPACE-cluster | jq .services[].deployments[].runningCount`\\\n' +
-                    'while [ $count -lt 1 ]\\\n' +
-                    'do\\\n' +
+                    ' --cluster $NAMESPACE-cluster | jq .services[].deployments[].runningCount`;' +
+                    'while [ $count -lt 1 ];' +
+                    'do;' +
                     'count=`aws --region us-east-1 ecs describe-services --service  ' +
                     serviceName +
                     ' --cluster ' +
                     namespace +
-                    '-cluster | jq .services[].deployments[].runningCount`\\\n' +
+                    '-cluster | jq .services[].deployments[].runningCount`;' +
                     'done'
             }
             if (config.containerCmd === 'down') {
                 //after finishing export
                 execCmd =
-                    ' ignore=`aws --region us-east-1 ecs update-service --service ' +
+                    'ignore=`aws --region us-east-1 ecs update-service --service ' +
                     serviceName +
                     ' --cluster ' +
                     namespace +
