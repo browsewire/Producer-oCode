@@ -340,6 +340,10 @@ const commands = {
                 } else {
                     let execMessages = await execFunction(execCmd)
                     messages = messages.concat(execMessages.messages)
+                    if (config.containerCmd === 'up') {
+                        let sleepMessages = await sleep(5000)
+                        messages = messages.concat(sleepMessages)
+                    }
                 }
             } else {
                 messages.push(
