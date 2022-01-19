@@ -233,7 +233,108 @@ const sleep = async function (ms) {
     let sleepMessages = await execFunction(cmd)
     return sleepMessages
 }
+/*
+
+*/
 const commands = {
+    container: async function (config) {
+        console.log('config in container command', config)
+        /*
+        {
+            siteId: 'dn',
+            cmd: 'container',
+            page: 1,
+            totalPages: 1,
+            containerCommand: 'up' || 'down',
+            data:[],
+            key:'asdfasdf',
+            stackKey:???,
+            stackPage: ???,
+            stackTotalPages: ???
+        }
+        */
+
+        let messages = []
+        //check environment
+        let env = findWhichEnv()
+
+        //check containerCommand
+        //get namespace
+        //build command
+        let namespace = process.env.NAMESPACE
+        let canRun = true
+        if (namespace === undefined) {
+            canRun = false
+            messages.push(
+                'Container Command could not run process.env.NAMESPACE is undefined.'
+            )
+        }
+        if (typeof config.siteId === 'undefined') {
+            canRun = false
+            messages.push(
+                'Container Command could not run, siteId is not provided in config.'
+            )
+        }
+        if (typeof config.containerCmd === 'undefined') {
+            canRun = false
+            messages.push(
+                'Container Command could not run, containerCmd is not provided in config.'
+            )
+        }
+        if (canRun) {
+            let execCmd = ''
+            let serviceName = config.siteId
+            if (config.containerCmd === 'up') {
+                //Producer needs to run this before each export to start the service
+                execCmd =
+                    'ignore=`aws ecs update-service --service ' +
+                    serviceName +
+                    ' --cluster  ' +
+                    namespace +
+                    '-cluster --desired-count 1 | jq`\\\n' +
+                    'count=`aws ecs describe-services --service  ' +
+                    serviceName +
+                    ' --cluster $NAMESPACE-cluster | jq .services[].deployments[].runningCount`\\\n' +
+                    'while [ $count -lt 1 ]\\\n' +
+                    'do\\\n' +
+                    'count=`aws ecs describe-services --service  ' +
+                    serviceName +
+                    ' --cluster ' +
+                    namespace +
+                    '-cluster | jq .services[].deployments[].runningCount`\\\n' +
+                    'done'
+            }
+            if (config.containerCmd === 'down') {
+                //after finishing export
+                execCmd =
+                    ' ignore=`aws ecs update-service --service ' +
+                    serviceName +
+                    ' --cluster ' +
+                    namespace +
+                    '-cluster --desired-count 0 | jq`'
+            }
+
+            if (execCmd.length > 0) {
+                if (env === 'local') {
+                    messages.push(
+                        'Skipping container command in local environment: ' +
+                            execCmd
+                    )
+                } else {
+                    let execMessages = await execFunction(execCmd)
+                    messages = messages.concat(execMessages.messages)
+                }
+            } else {
+                messages.push(
+                    'No matching container command found, skipping container command.'
+                )
+            }
+        }
+
+        console.log('container command messages', messages)
+
+        return messages
+    },
     rabbitmq: async function (config) {
         console.log('config in commands rabbitmq', config)
         let producerMessage = ''
@@ -257,10 +358,6 @@ const commands = {
         return [
             config.siteId + ' ' + config.task + ' started.' + getTimeStamp(),
         ]
-    },
-    rebuildTestCommand: async function (config) {
-        console.log('rebuildTestCommand', config)
-        return ['rebuildTestCommand', config]
     },
     multiFlushVarnish: async function (config) {
         let messages = []
@@ -830,11 +927,13 @@ const processStoredCommand = async function (jsonObj) {
                             displaymessages.unshift(
                                 'running command: ' + JSON.stringify(stackCmd)
                             )
+                            console.log(
+                                'running command: ' + JSON.stringify(stackCmd)
+                            )
                             let cmdMessages = await commands[stackCmd.cmd](
                                 stackCmd
                             )
                             for (let m = 0; m < cmdMessages.length; m++) {
-                                displaymessages.unshift('cmdMessage ' + m)
                                 displaymessages.unshift(cmdMessages[m])
                             }
                             //messages = messages.concat(cmdMessages)

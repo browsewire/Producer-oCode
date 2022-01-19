@@ -13,6 +13,7 @@ const {
 } = require('./commands')
 // const producer = require('./broker')
 
+//this is a global variable, so not defined with let, const or var
 displaymessages = ['Producer screen initialized.']
 
 let mag_url =
@@ -187,12 +188,16 @@ app.get('/', async (req, res) => {
         such as the export routes or export list
         */
         let producerMessage = ''
+
+        //if this is a display message, just pop it right up
         if (req.query.displaymessage) {
             displaymessages.unshift(req.query.displaymessage)
             if (displaymessages.length > 200) {
                 displaymessages.pop()
             }
         }
+        //if this is a task, check if it's parsable json or not,
+        //if not then make it into a standard format json object
         if (req.query.task) {
             /*
             if a task is not json, it must be parsed into the format
@@ -204,11 +209,35 @@ app.get('/', async (req, res) => {
             {
                 siteId: 'dn',
                 cmd: 'rabbitmq',
-                key: 'rmq' + Math.random(),
+                key: 'rmq' + makeId(10),
                 page: 1,
                 totalPages: 1,
                 data: ['/*'],
+                ?stackKey: 'randStackKey'+ makeId(10)
+                ?stackPage: 3
+                ?stackTotalPages: 3
             }
+
+            to run multiple commands in a row we can add 
+
+            stackKey
+            stackPage
+            stackTotalPages
+
+            for stacks
+            multiple commands can be passed in a row and will be executed in stackPage
+            order like 1 then 2 then 3 (they are sorted by page number and run from lowest to highest)
+            note the actual page number is not checked, just used to sort
+            processStoredCommands will wait until the number of items with matching stackKey 
+            matches the number of stackTotalPages, then it will sort them by stackPage from
+            lowest to highest and then execute them from lowest to highest
+
+            for the regular key and stack key
+            if processStoredCommand receives different stack keys for the same site id, it will
+            reset the stack 
+            the same is true for regular commands when processStoredCommands is trying to combine
+            data from matching keys, if processStoredCommands received a different key for the same
+            site id, it will reset the data it's been aggregating for the command
             */
 
             let generatedJsonTask
@@ -222,7 +251,7 @@ app.get('/', async (req, res) => {
                     totalPages: 1,
                     data: [],
                     cmd: 'rabbitmq',
-                    key: 'generatedJsonTask' + Math.random(),
+                    key: 'generatedJsonTask' + makeId(10),
                 }
                 for (arg in req.query) {
                     generatedJsonTask[arg] = req.query[arg]
@@ -280,21 +309,46 @@ app.get('/', async (req, res) => {
                 generatedJsonTask.task = 'exportelder'
             }
 
-            console.log('generatedJsonTask', generatedJsonTask)
+            console.log(
+                'generatedJsonTask logged in producer index js',
+                generatedJsonTask
+            )
 
+            //if this is an export task, add some extra commands
             if (
                 typeof generatedJsonTask.task != 'undefined' &&
                 generatedJsonTask.task.indexOf('export') != -1
             ) {
-                //flush the varnish cache before the export
-                console.log(
-                    'attempting varnish flush in export before graphql flush'
-                )
-
-                //flush the varnish and aws cache before the export
-                console.log('in export before api flush')
+                /*
+                create a stack of commands
+                before an export start up the container
+                note the startup container script does not do anything
+                in local environments
+                and flush the graphql cache
+                */
                 let stackKey = generatedJsonTask.siteId + 'stack' + makeId(10)
 
+                //start up the container for dev, staging & prod
+                processStoredCommand(
+                    JSON.stringify({
+                        siteId: generatedJsonTask.siteId,
+                        cmd: 'container',
+                        containerCmd: 'up',
+                        key: 'keyContainer' + makeId(10),
+                        page: 1,
+                        totalPages: 1,
+                        stackKey: stackKey,
+                        stackPage: 1,
+                        stackTotalPages: 3,
+                        data: [],
+                    })
+                ).then((messages) => {
+                    for (let m = 0; m < messages.length; m++) {
+                        displaymessages.unshift(messages[m])
+                    }
+                })
+
+                //flush the varnish and aws cache before the export
                 processStoredCommand(
                     JSON.stringify({
                         siteId: generatedJsonTask.siteId,
@@ -304,7 +358,7 @@ app.get('/', async (req, res) => {
                         totalPages: 1,
                         stackKey: stackKey,
                         stackPage: 2,
-                        stackTotalPages: 2,
+                        stackTotalPages: 3,
                         data: ['/graphql*', '/graphql/*'],
                     })
                 ).then((messages) => {
@@ -312,11 +366,14 @@ app.get('/', async (req, res) => {
                         displaymessages.unshift(messages[m])
                     }
                 })
+
+                //modify the current task to go onto the stack
                 generatedJsonTask.stackKey = stackKey
-                generatedJsonTask.stackPage = 2
-                generatedJsonTask.stackTotalPages = 2
+                generatedJsonTask.stackPage = 3
+                generatedJsonTask.stackTotalPages = 3
             }
 
+            //run the command
             processStoredCommand(JSON.stringify(generatedJsonTask)).then(
                 (messages) => {
                     for (let m = 0; m < messages.length; m++) {
@@ -324,11 +381,6 @@ app.get('/', async (req, res) => {
                     }
                 }
             )
-
-            // let dateStr = getTimeStamp()
-            // displaymessages.unshift(
-            //     'Command: ' + producerMessage + '. Time: ' + dateStr
-            // )
         }
         if (Object.keys(req.query).length != 0) {
             res.redirect('/')
