@@ -314,6 +314,41 @@ app.get('/', async (req, res) => {
             //if this is an export task, add some extra commands
             if (
                 typeof generatedJsonTask.task != 'undefined' &&
+                generatedJsonTask.task.indexOf('develder') != -1
+            ) {
+                /*
+                create a stack of commands
+                before an elder dev start up the container
+                note the startup container script does not do anything
+                in local environments
+                */
+                let stackKey = generatedJsonTask.siteId + 'stack' + makeId(10)
+
+                //start up the container for dev, staging & prod
+                processStoredCommand(
+                    JSON.stringify({
+                        siteId: generatedJsonTask.siteId,
+                        cmd: 'container',
+                        containerCmd: 'up',
+                        key: 'keyContainer' + makeId(10),
+                        page: 1,
+                        totalPages: 1,
+                        stackKey: stackKey,
+                        stackPage: 1,
+                        stackTotalPages: 2,
+                        data: [],
+                    })
+                )
+
+                //modify the current task to go onto the stack
+                generatedJsonTask.stackKey = stackKey
+                generatedJsonTask.stackPage = 2
+                generatedJsonTask.stackTotalPages = 2
+            }
+
+            //if this is an export task, add some extra commands
+            if (
+                typeof generatedJsonTask.task != 'undefined' &&
                 generatedJsonTask.task.indexOf('export') != -1
             ) {
                 /*
