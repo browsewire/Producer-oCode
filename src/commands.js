@@ -98,9 +98,9 @@ const addDisplayMessages = function (messages) {
     }
 
     let arrLength = displaymessages.length
-    let maxNumber = 300
+    let maxNumber = 500
     if (arrLength > maxNumber) {
-        displaymessages.splice(0, arrLength - maxNumber)
+        displaymessages.splice(arrLength - maxNumber, arrLength)
     }
 }
 /*
