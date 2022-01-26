@@ -72,6 +72,20 @@ const storedCommands = {
         },
     },
 }
+
+const makeId = function (length) {
+    var result = ''
+    var characters =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    var charactersLength = characters.length
+    for (var i = 0; i < length; i++) {
+        result += characters.charAt(
+            Math.floor(Math.random() * charactersLength)
+        )
+    }
+    return result
+}
+
 const findWhichEnv = function () {
     let environment = 'local'
     if (process.env.MAG_NAME.indexOf('m2-dev') != -1) {
@@ -93,8 +107,9 @@ const addDisplayMessages = function (messages) {
     }
     //log them so we can see the messages in the logs too
     console.log('displayMessages', messages)
+    let dateStr = getTimeStamp()
     for (let m = 0; m < messages.length; m++) {
-        displaymessages.unshift(messages[m])
+        displaymessages.unshift(messages[m] + '\n' + dateStr)
     }
 
     let arrLength = displaymessages.length
@@ -134,19 +149,6 @@ const getLogDir = function () {
     return __dirname + '/logs/cache/'
 }
 
-const makeId = function (length) {
-    var result = ''
-    var characters =
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    var charactersLength = characters.length
-    for (var i = 0; i < length; i++) {
-        result += characters.charAt(
-            Math.floor(Math.random() * charactersLength)
-        )
-    }
-    return result
-}
-
 /*
 Convert the time zone
 */
@@ -162,7 +164,7 @@ const getTimeStamp = function () {
     let dateStr = new Date()
     dateStr = convertTZ(dateStr, 'America/Chicago')
     dateStr = dateStr.toLocaleString()
-    return dateStr
+    return dateStr + ' CST'
 }
 const makeCacheKey = function (source, query, vars) {
     let hashState = MurmurHash3(source + query + JSON.stringify(vars))
@@ -254,6 +256,35 @@ const sleep = async function (ms) {
 
 */
 const commands = {
+    buildcomplete: async function (config) {
+        console.log('buildcomplete', config)
+        let stackKey = 'bc' + config.siteId + makeId(10)
+
+        let cacheClearCmd = config
+        cacheClearCmd.cmd = 'cacheclear'
+        cacheClearCmd.stackKey = stackKey
+        cacheClearCmd.stackPage = 1
+        cacheClearCmd.stackTotalPages = 2
+        cacheClearCmd.key = 'cacheclear' + makeId(10)
+        cacheClearCmd.page = 1
+        cacheClearCmd.totalPages = 1
+        processStoredCommand(JSON.stringify(cacheClearCmd))
+
+        let containerCmd = {
+            siteId: config.siteId,
+            key: 'container' + makeId(10),
+            cmd: 'container',
+            containerCmd: 'down',
+            page: 1,
+            totalPages: 1,
+            stackKey: stackKey,
+            stackPage: 2,
+            stackTotalPages: 2,
+            data: [],
+        }
+        processStoredCommand(JSON.stringify(containerCmd))
+        return ['Running buildcomplete commands for ' + config.siteId + '.']
+    },
     container: async function (config) {
         console.log('config in container command', config)
         /*
@@ -274,7 +305,10 @@ const commands = {
         let messages = []
         //check environment
         let env = findWhichEnv()
-
+        if (env == 'local') {
+            messages.push('Skipping container command in local environment.')
+            return messages
+        }
         //check containerCommand
         //get namespace
         //build command
@@ -378,9 +412,7 @@ const commands = {
         producer.start(producerMessage).catch((err) => {
             console.log(err)
         })
-        return [
-            config.siteId + ' ' + config.task + ' started.' + getTimeStamp(),
-        ]
+        return [config.siteId + ' ' + config.task + ' started.']
     },
     multiFlushVarnish: async function (config) {
         let messages = []
@@ -414,6 +446,7 @@ const commands = {
             messages = messages.concat(varnishMessages[i])
         }
         let whichEnv = findWhichEnv()
+        addDisplayMessages('Flushing Varnish ' + config.siteId + ' Cache.')
         if (whichEnv != 'local') {
             let sleepMessages = await sleep(15000)
             messages = messages.concat(sleepMessages.messages)
@@ -459,7 +492,8 @@ const commands = {
         }
 
         curlCommand += '.' + domain + '.com' + config.path
-        messages.push('curl command: ' + curlCommand)
+        // messages.push('Varnish Flush curl command:\n' + curlCommand)
+        console.log('Varnish Flush curl command:\n' + curlCommand)
 
         let execMessages = await execFunction(curlCommand)
         console.log('curl execMessages', execMessages)
@@ -569,6 +603,7 @@ const commands = {
             let thereWasAnError = false
             while (status != 'Completed') {
                 console.log('in while loop waiting for cache to clear')
+                addDisplayMessages('Waiting for AWS cache to clear.')
                 execMessages = await execFunction(checkcmd)
                 console.log('while loop execMessages', execMessages)
                 cacheResponseJson = JSON.parse(execMessages.stdout)
@@ -622,22 +657,24 @@ const commands = {
 
         if (whichEnv === 'local') {
             messages.push(
-                config.siteId + ': skipping cache clear in ' + whichEnv + ' env'
+                'Skipping ' +
+                    config.siteId +
+                    ' AWS Cloudfront cache clear in ' +
+                    whichEnv +
+                    ' environment.'
             )
             return messages
         }
 
-        messages.push(
-            'Command: Cacheclear. Cacheclear Config: ' + JSON.stringify(config)
-        )
+        addDisplayMessages('Clearing AWS Cloudfront cache.')
 
         if (typeof awsDistributions[siteId] == 'undefined') {
-            messages.push('missing siteId in awsDistributions in cacheflush')
+            messages.push('Missing siteId in awsDistributions in cacheflush.')
             return messages
         }
         if (typeof awsDistributions[siteId][whichEnv] == 'undefined') {
             messages.push(
-                'missing siteId env in awsDistributions in cacheflush'
+                'Missing siteId env in awsDistributions in cacheflush.'
             )
             return messages
         }
@@ -729,13 +766,11 @@ const commands = {
             if (isJson(execMessages.stdout)) {
                 let cacheResponseJson = JSON.parse(execMessages.stdout)
                 if (cacheResponseJson.Invalidation.Status == 'Completed') {
-                    let dateStr = getTimeStamp()
                     messages = [
                         whichEnv +
                             ' -- ' +
                             config.siteId +
-                            ' -- cache cleared. Time: ' +
-                            dateStr,
+                            ' -- cache cleared.',
                     ]
 
                     return messages
@@ -760,11 +795,10 @@ const commands = {
             } catch (err) {
                 //this is most likely cause by a flush completing and the file being removed
                 console.log('err in trying to read checkFile', err)
-                let dateStr = getTimeStamp()
+
                 //we should see another message from the previous cache clear
                 return [
-                    dateStr +
-                        ': unable to clear cache again, it appears it was just cleared',
+                    'Unable to clear cache again, it appears it was just cleared',
                 ]
             }
         }
@@ -820,15 +854,8 @@ const commands = {
 
         console.log('messages in cacheclear', messages)
 
-        let dateStr = getTimeStamp()
         //overwrite the messages to just show a short message on the producer screen
-        messages = [
-            whichEnv +
-                ' -- ' +
-                config.siteId +
-                ' -- cache cleared. Time: ' +
-                dateStr,
-        ]
+        messages = [whichEnv + ' -- ' + config.siteId + ' -- cache cleared.']
         messages = varnishMessages.concat(messages)
 
         // messages.push(
@@ -842,6 +869,117 @@ const commands = {
         return messages
     },
 }
+
+const trackExport = function (cmd, addingToStack = false) {
+    cmd.timeStamp = getTimeStamp()
+    //max number of logs to save
+    let max_length = 4
+    console.log('in track export cmd', cmd)
+    if (addingToStack) {
+        //if adding to stack and the stackKey is different than what we already have
+        //remove it
+        //if adding to stack, add the export id
+        //add stack command to export_status[siteId].queue
+        if (
+            typeof cmd.task != 'undefined' &&
+            cmd.task.indexOf('export') != -1
+        ) {
+            let exportid = 'exportid__' + makeId(10)
+            cmd.producerMessage += '&exportid=' + exportid
+            cmd.exportid = exportid
+            console.log('queued EXPORT', exportid)
+            if (
+                typeof cmd.siteId != 'undefined' &&
+                typeof export_status[cmd.siteId] != 'undefined'
+            ) {
+                export_status[cmd.siteId].queued.unshift(cmd)
+            }
+        }
+    }
+    if (!addingToStack) {
+        //if not in stack and its an export, check if a matching
+
+        //this is an export
+        if (
+            typeof cmd.task != 'undefined' &&
+            cmd.task.indexOf('export') != -1
+        ) {
+            if (typeof cmd.exportid != 'undefined') {
+                console.log('active EXPORT', cmd.exportid)
+                if (
+                    typeof cmd.siteId != 'undefined' &&
+                    typeof export_status[cmd.siteId] != 'undefined'
+                ) {
+                    if (export_status[cmd.siteId].running.length > 0) {
+                        export_status[cmd.siteId].stopped = export_status[
+                            cmd.siteId
+                        ].running.concat(export_status[cmd.siteId].stopped)
+                        if (
+                            export_status[cmd.siteId].stopped.length >
+                            max_length
+                        ) {
+                            export_status[cmd.siteId].stopped = export_status[
+                                cmd.siteId
+                            ].stopped.slice(0, max_length)
+                        }
+                    }
+                    export_status[cmd.siteId].running = [cmd]
+                    export_status[cmd.siteId].queued = export_status[
+                        cmd.siteId
+                    ].queued.filter((ex) => ex.exportid != cmd.exportid)
+                }
+            } else {
+                console.log('Active EXPORT no exportid found.')
+            }
+        }
+
+        //this is a completed export
+        if (
+            typeof cmd.cmd != 'undefined' &&
+            cmd.cmd.indexOf('buildcomplete') != -1
+        ) {
+            if (typeof cmd.exportid != 'undefined') {
+                console.log('completed EXPORT', cmd.exportid)
+                if (
+                    typeof cmd.siteId != 'undefined' &&
+                    typeof export_status[cmd.siteId] != 'undefined'
+                ) {
+                    export_status[cmd.siteId].complete.unshift(cmd)
+                    if (
+                        export_status[cmd.siteId].complete.length > max_length
+                    ) {
+                        export_status[cmd.siteId].complete = export_status[
+                            cmd.siteId
+                        ].complete.slice(0, max_length)
+                    }
+                    export_status[cmd.siteId].running = export_status[
+                        cmd.siteId
+                    ].running.filter((ex) => ex.exportid != cmd.exportid)
+                }
+            } else {
+                console.log('Completed EXPORT no exportid found.')
+            }
+        }
+    }
+
+    // export_status.dn.queued
+    // export_status.dn.running
+    // export_status.dn.complete
+
+    return cmd
+}
+
+//all commands pass thru here either from the stack
+//or from commands run without the stack
+const runCommand = async function (jsonObj) {
+    jsonObj = trackExport(jsonObj)
+    displaymessages.unshift(
+        'Running command:\n' + JSON.stringify(jsonObj, null, 4)
+    )
+    let cmdMessages = await commands[jsonObj.cmd](jsonObj)
+    addDisplayMessages(cmdMessages)
+}
+
 const processStoredCommand = async function (jsonObj) {
     let messages = []
     jsonObj = JSON.parse(jsonObj)
@@ -901,6 +1039,13 @@ const processStoredCommand = async function (jsonObj) {
                         jsonObj.stackKey !=
                         storedCommands.stacks[jsonObj.siteId].stackKey
                     ) {
+                        addDisplayMessages(
+                            'New stack key supplied for ' +
+                                jsonObj.siteId +
+                                '. Resetting the command stack.'
+                        )
+                        //if there is a new stackKey provided for the same site, the old stack is wiped
+                        //and a new one is started
                         // console.log(
                         //     'Old stackKey was: ' +
                         //         storedCommands.stacks[jsonObj.siteId].stackKey +
@@ -915,12 +1060,24 @@ const processStoredCommand = async function (jsonObj) {
                     // console.log('adding stored command to stack', jsonObj)
                     storedCommands.stacks[jsonObj.siteId].commands.push(jsonObj)
 
-                    addDisplayMessages(
-                        'Adding command to stack ' +
-                            jsonObj.siteId +
-                            ' ' +
-                            jsonObj.cmd
-                    )
+                    //run this command through the trackExport script
+                    trackExport(jsonObj, true)
+
+                    let dMsg =
+                        'Adding command to ' +
+                        jsonObj.siteId +
+                        ' stack: ' +
+                        jsonObj.stackPage +
+                        ' of ' +
+                        jsonObj.stackTotalPages +
+                        '\n' +
+                        jsonObj.cmd +
+                        ' '
+                    dMsg += jsonObj.task ?? ''
+                    dMsg += ' '
+                    dMsg += jsonObj.producerMessage ?? ''
+                    dMsg += jsonObj.containerCmd ?? ''
+                    addDisplayMessages(dMsg)
                     if (
                         storedCommands.stacks[jsonObj.siteId].commands
                             .length === jsonObj.stackTotalPages
@@ -949,26 +1106,39 @@ const processStoredCommand = async function (jsonObj) {
                                     jsonObj.siteId
                                 ].commands.shift()
                             addDisplayMessages(
-                                'running command: ' +
-                                    JSON.stringify(stackCmd, null, 4) +
-                                    '\n' +
-                                    getTimeStamp()
+                                '-----------------^\nStarting Next Stack Command ' +
+                                    stackCmd.stackPage +
+                                    ' of ' +
+                                    stackCmd.stackTotalPages +
+                                    ' from ' +
+                                    stackCmd.siteId +
+                                    ' stack'
                             )
-                            let cmdMessages = await commands[stackCmd.cmd](
-                                stackCmd
-                            )
-                            addDisplayMessages(cmdMessages)
+                            // addDisplayMessages(
+                            //     'Running command ' +
+                            //         stackCmd.stackPage +
+                            //         ' of ' +
+                            //         stackCmd.stackTotalPages +
+                            //         ' from ' +
+                            //         stackCmd.siteId +
+                            //         ' stack:\n' +
+                            //         JSON.stringify(stackCmd, null, 4)
+                            // )
+                            await runCommand(stackCmd)
+
+                            // let cmdMessages = await commands[stackCmd.cmd](
+                            //     stackCmd
+                            // )
+                            // addDisplayMessages(cmdMessages)
                         }
                     }
                 } else {
-                    displaymessages.unshift(
-                        'running command: ' +
-                            JSON.stringify(jsonObj, null, 4) +
-                            '\n' +
-                            getTimeStamp()
-                    )
-                    let cmdMessages = await commands[jsonObj.cmd](jsonObj)
-                    addDisplayMessages(cmdMessages)
+                    // displaymessages.unshift(
+                    //     'Running command:\n' + JSON.stringify(jsonObj, null, 4)
+                    // )
+                    // let cmdMessages = await commands[jsonObj.cmd](jsonObj)
+                    // addDisplayMessages(cmdMessages)
+                    await runCommand(jsonObj)
                 }
             }
         }

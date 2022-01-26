@@ -12,6 +12,8 @@
 - var tf_dev = 'https://' + ports.host_name + '-elder.1215diamonds.com'
 - var fa_dev = 'https://' + ports.host_name + '-elder.foreverartisans.com'
 - var displaymessages = displaymessages
+- var export_status = export_status
+- var sites = ['dn','tf','fa']
 
 
 doctype html
@@ -47,6 +49,13 @@ style.
         display:flex;
         flex-flow:column;
         align-items:flex-start;
+    }
+    .control-group.export-status ul{
+        width:100%;
+        max-height:8em;
+        overflow-y:scroll;
+        border:1px solid gray;
+        margin:0;
     }
     .messages{
         width:100%;
@@ -166,6 +175,7 @@ body
     .control-group-wrap
         .control-group-wrap-inner
             .control-group
+                h2=ports.host_name
                 a(href=wpurl, target='_blank') Wordpress Admin (u:wpcms, p:wpcms)
                 a(href=magurl, target='_blank') Magento Admin (login in lastpass)
                 h2 Exported Sites
@@ -211,9 +221,6 @@ body
                                 input#path(type='text' name='list')
                                 div.remove X
                     input(type='submit' value="Run Export")
-
-               
-                
 
             .control-group 
                 h2 Dev
@@ -272,7 +279,29 @@ body
                             each val, key in displaymessages 
                                 li 
                                     p=val
-
+                    h2 Export Status
+                    each v, k in sites 
+                        .control-group.export-status
+                            h2=v + ' queued'
+                            ul 
+                                each val, key in export_status[v].queued 
+                                    li 
+                                        p=JSON.stringify(val, null, 4)
+                            h2=v + ' running'
+                            ul 
+                                each val, key in export_status[v].running 
+                                    li 
+                                        p=JSON.stringify(val, null, 4)
+                            h2=v + ' complete'
+                            ul 
+                                each val, key in export_status[v].complete 
+                                    li 
+                                        p=JSON.stringify(val, null, 4)
+                            h2=v + ' stopped'
+                            ul 
+                                each val, key in export_status[v].stopped 
+                                    li 
+                                        p=JSON.stringify(val, null, 4)
 
 script.
     let sidebar = document.querySelector(".messages");

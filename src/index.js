@@ -14,7 +14,28 @@ const {
 // const producer = require('./broker')
 
 //this is a global variable, so not defined with let, const or var
-global.displaymessages = ['Producer screen initialized.']
+global.displaymessages = []
+global.export_status = {
+    dn: {
+        queued: [],
+        running: [],
+        complete: [],
+        stopped: [],
+    },
+    tf: {
+        queued: [],
+        running: [],
+        complete: [],
+        stopped: [],
+    },
+    fa: {
+        queued: [],
+        running: [],
+        complete: [],
+        stopped: [],
+    },
+}
+addDisplayMessages('Producer screen initialized.')
 
 let mag_url =
     ['m2-dev', 'm2-staging', 'www'].indexOf(process.env.MAG_NAME) != -1
