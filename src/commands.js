@@ -610,7 +610,9 @@ const commands = {
             while (status != 'Completed') {
                 console.log('in while loop waiting for cache to clear')
                 addDisplayMessages(
-                    'Waiting for AWS ' + config.siteId + ' cache to clear.'
+                    'Waiting for ' +
+                        config.siteId +
+                        ' AWS Cloudfront cache to clear.'
                 )
                 execMessages = await execFunction(checkcmd)
                 console.log('while loop execMessages', execMessages)
