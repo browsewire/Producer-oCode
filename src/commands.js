@@ -109,6 +109,9 @@ const addDisplayMessages = function (messages) {
     console.log('displayMessages', messages)
     let dateStr = getTimeStamp()
     for (let m = 0; m < messages.length; m++) {
+        if (typeof messages[m] != 'string') {
+            messages[m] = JSON.stringify(messages[m])
+        }
         displaymessages.unshift(messages[m] + '\n' + dateStr)
     }
 
@@ -212,12 +215,12 @@ const execFunction = async function (execString) {
     try {
         let { stdout, stderr, error } = await exec(execString)
         if (error) {
-            messages.push(`error: ${error.message}`)
+            messages.push(execString`\nerror: ${error.message}`)
         }
         if (stderr) {
-            messages.push(`stderr: ${stderr}`)
+            messages.push(execString`\nstderr: ${stderr}`)
         }
-        messages.push(`stdout: ${stdout}`)
+        messages.push(execString`\nstdout: ${stdout}`)
         return {
             error,
             stderr,
@@ -590,6 +593,7 @@ const commands = {
         config = {
             distributionId: '',
             invalidationId: '',
+            siteId: '',
         }
     ) {
         try {
@@ -603,7 +607,9 @@ const commands = {
             let thereWasAnError = false
             while (status != 'Completed') {
                 console.log('in while loop waiting for cache to clear')
-                addDisplayMessages('Waiting for AWS cache to clear.')
+                addDisplayMessages(
+                    'Waiting for AWS ' + siteId + ' cache to clear.'
+                )
                 execMessages = await execFunction(checkcmd)
                 console.log('while loop execMessages', execMessages)
                 cacheResponseJson = JSON.parse(execMessages.stdout)
@@ -806,6 +812,7 @@ const commands = {
         let { checkMessages, thereWasAnError } = await commands.checkrunning({
             distributionId,
             invalidationId,
+            siteId: config.siteId,
         })
         if (thereWasAnError) {
             console.log('there was an error, trying the cache clear again')
@@ -874,7 +881,6 @@ const trackExport = function (cmd, addingToStack = false) {
     cmd.timeStamp = getTimeStamp()
     //max number of logs to save
     let max_length = 4
-    console.log('in track export cmd', cmd)
     if (addingToStack) {
         //if adding to stack and the stackKey is different than what we already have
         //remove it
@@ -892,7 +898,17 @@ const trackExport = function (cmd, addingToStack = false) {
                 typeof cmd.siteId != 'undefined' &&
                 typeof export_status[cmd.siteId] != 'undefined'
             ) {
-                export_status[cmd.siteId].queued.unshift(cmd)
+                if (export_status[cmd.siteId].queued.length) {
+                    export_status[cmd.siteId].stopped = export_status[
+                        cmd.siteId
+                    ].queued.concat(export_status[cmd.siteId].stopped)
+                    if (export_status[cmd.siteId].stopped.length > max_length) {
+                        export_status[cmd.siteId].stopped = export_status[
+                            cmd.siteId
+                        ].stopped.slice(0, max_length)
+                    }
+                }
+                export_status[cmd.siteId].queued = [cmd]
             }
         }
     }
