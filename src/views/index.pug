@@ -57,6 +57,9 @@ style.
         border:1px solid gray;
         margin:0;
     }
+    .control-group.export-status ul p{
+        margin:0;
+    }
     .messages{
         width:100%;
         height:100%;
@@ -286,22 +289,51 @@ body
                             ul 
                                 each val, key in export_status[v].queued 
                                     li 
-                                        p=JSON.stringify(val, null, 4)
+                                        p="Export -- " + val.exportid
+                                        p="Time: " + val.timeStamp
+                                        if val.list
+                                            p="List: " + val.list
+                                        if val.routes
+                                            p="Routes: " + val.routes
+                                        hr
                             h2=v + ' running'
                             ul 
                                 each val, key in export_status[v].running 
                                     li 
-                                        p=JSON.stringify(val, null, 4)
+                                        p="Export -- " + val.exportid
+                                        p="Time: " + val.timeStamp
+                                        if val.list
+                                            p="List: " + val.list
+                                        if val.routes
+                                            p="Routes: " + val.routes
+                                        hr
                             h2=v + ' complete'
                             ul 
                                 each val, key in export_status[v].complete 
                                     li 
-                                        p=JSON.stringify(val, null, 4)
+                                        p="Export -- " + val.exportid
+                                        p="Time: " + val.timeStamp
+                                        if val.incrementalBuildConfig && val.incrementalBuildConfig.list
+                                            p="List: " + val.incrementalBuildConfig.list
+                                        if val.incrementalBuildConfig && val.incrementalBuildConfig.routes
+                                            p="Routes: " + val.incrementalBuildConfig.routes
+                                        hr
                             h2=v + ' stopped'
                             ul 
                                 each val, key in export_status[v].stopped 
                                     li 
-                                        p=JSON.stringify(val, null, 4)
+                                        p="Export -- " + val.exportid
+                                        p="Time: " + val.timeStamp
+                                        if val.list
+                                            p="List: " + val.list
+                                        if val.routes
+                                            p="Routes: " + val.routes
+                                        if val.incrementalBuildConfig && val.incrementalBuildConfig.list
+                                            p="List: " + val.incrementalBuildConfig.list
+                                        if val.incrementalBuildConfig && val.incrementalBuildConfig.routes
+                                            p="Routes: " + val.incrementalBuildConfig.routes
+                                        hr
+                                        
 
 script.
     let sidebar = document.querySelector(".messages");
