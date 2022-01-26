@@ -666,6 +666,7 @@ const commands = {
         }
 
         if (whichEnv === 'local') {
+            // whichEnv = 'dev'
             messages.push(
                 'Skipping ' +
                     config.siteId +
@@ -818,8 +819,12 @@ const commands = {
             invalidationId,
             siteId: config.siteId,
         })
+        addDisplayMessages('After checkrunning')
         if (thereWasAnError) {
             console.log('there was an error, trying the cache clear again')
+            addDisplayMessages(
+                'there was an error, trying the cache clear again'
+            )
             //try again if there was a problem
             if (typeof config.attempts == 'undefined') {
                 config.attempts = 0
@@ -832,7 +837,7 @@ const commands = {
             }
             let sleepMessages = await sleep(15000)
             messages = messages.concat(sleepMessages.messages)
-            let newMessages = commands.cacheclear(config)
+            let newMessages = await commands.cacheclear(config)
             messages = messages.concat(newMessages)
         }
         if (isOriginalCacheQuery) {
