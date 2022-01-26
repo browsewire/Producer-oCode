@@ -610,7 +610,7 @@ const commands = {
             while (status != 'Completed') {
                 console.log('in while loop waiting for cache to clear')
                 addDisplayMessages(
-                    'Waiting for AWS ' + siteId + ' cache to clear.'
+                    'Waiting for AWS ' + config.siteId + ' cache to clear.'
                 )
                 execMessages = await execFunction(checkcmd)
                 console.log('while loop execMessages', execMessages)
@@ -1060,7 +1060,9 @@ const processStoredCommand = async function (jsonObj) {
                         addDisplayMessages(
                             'New stack key supplied for ' +
                                 jsonObj.siteId +
-                                '. Resetting the command stack.\n-----------------X'
+                                '. Resetting the ' +
+                                jsonObj.siteId +
+                                ' command stack.\n-----------------X'
                         )
                         //if there is a new stackKey provided for the same site, the old stack is wiped
                         //and a new one is started
@@ -1124,7 +1126,7 @@ const processStoredCommand = async function (jsonObj) {
                                     jsonObj.siteId
                                 ].commands.shift()
                             addDisplayMessages(
-                                '-----------------^\nStarting Next Stack Command ' +
+                                '-----------------^\nStarting Stack Command ' +
                                     stackCmd.stackPage +
                                     ' of ' +
                                     stackCmd.stackTotalPages +
