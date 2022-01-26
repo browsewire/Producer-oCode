@@ -215,12 +215,14 @@ const execFunction = async function (execString) {
     try {
         let { stdout, stderr, error } = await exec(execString)
         if (error) {
-            messages.push(`${execString}\nerror: ${error.message}`)
+            messages.push(
+                `bash command:\n${execString}\nerror: ${error.message}`
+            )
         }
         if (stderr) {
-            messages.push(`${execString}\nstderr: ${stderr}`)
+            messages.push(`Bash command:\n${execString}\nstderr: ${stderr}`)
         }
-        messages.push(`${execString}\nstdout: ${stdout}`)
+        messages.push(`Bash command:\n${execString}\nstdout: ${stdout}`)
         return {
             error,
             stderr,
@@ -381,7 +383,7 @@ const commands = {
                     //up to give the initial commands time to run
                     if (config.containerCmd === 'up') {
                         let sleepMessages = await sleep(5000)
-                        messages = messages.concat(sleepMessages)
+                        messages = messages.concat(sleepMessages.messages)
                     }
                 }
             } else {
@@ -672,7 +674,7 @@ const commands = {
             return messages
         }
 
-        addDisplayMessages('Clearing AWS Cloudfront cache.')
+        addDisplayMessages('Clearing ' + siteId + ' AWS Cloudfront cache.')
 
         if (typeof awsDistributions[siteId] == 'undefined') {
             messages.push('Missing siteId in awsDistributions in cacheflush.')
@@ -1058,7 +1060,7 @@ const processStoredCommand = async function (jsonObj) {
                         addDisplayMessages(
                             'New stack key supplied for ' +
                                 jsonObj.siteId +
-                                '. Resetting the command stack.'
+                                '. Resetting the command stack.\n-----------------X'
                         )
                         //if there is a new stackKey provided for the same site, the old stack is wiped
                         //and a new one is started
