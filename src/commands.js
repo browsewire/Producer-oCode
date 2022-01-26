@@ -451,7 +451,7 @@ const commands = {
             messages = messages.concat(varnishMessages[i])
         }
         let whichEnv = findWhichEnv()
-        addDisplayMessages('Flushing Varnish ' + config.siteId + ' Cache.')
+        addDisplayMessages('Flushing ' + config.siteId + ' Varnish Cache.')
         if (whichEnv != 'local') {
             let sleepMessages = await sleep(15000)
             messages = messages.concat(sleepMessages.messages)
