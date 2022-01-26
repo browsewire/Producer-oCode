@@ -215,12 +215,12 @@ const execFunction = async function (execString) {
     try {
         let { stdout, stderr, error } = await exec(execString)
         if (error) {
-            messages.push(execString`\nerror: ${error.message}`)
+            messages.push(`${execString}\nerror: ${error.message}`)
         }
         if (stderr) {
-            messages.push(execString`\nstderr: ${stderr}`)
+            messages.push(`${execString}\nstderr: ${stderr}`)
         }
-        messages.push(execString`\nstdout: ${stdout}`)
+        messages.push(`${execString}\nstdout: ${stdout}`)
         return {
             error,
             stderr,
