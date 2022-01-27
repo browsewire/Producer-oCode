@@ -258,9 +258,13 @@ const sleep = async function (ms) {
     return sleepMessages
 }
 /*
-
+    Commands that are run by the processStoredCommands
 */
 const commands = {
+    flushcomplete: async function (config) {
+        //just a function to capture the completed flush
+        return config
+    },
     buildcomplete: async function (config) {
         console.log('buildcomplete', config)
         let stackKey = 'bc' + config.siteId + makeId(10)
@@ -269,11 +273,18 @@ const commands = {
         cacheClearCmd.cmd = 'cacheclear'
         cacheClearCmd.stackKey = stackKey
         cacheClearCmd.stackPage = 1
-        cacheClearCmd.stackTotalPages = 2
+        cacheClearCmd.stackTotalPages = 3
         cacheClearCmd.key = 'cacheclear' + makeId(10)
         cacheClearCmd.page = 1
         cacheClearCmd.totalPages = 1
         processStoredCommand(JSON.stringify(cacheClearCmd))
+
+        //tag the flush complete so that the export tracker sees it
+        let flushCmd = cacheClearCmd
+        flushCmd.cmd = 'flushcomplete'
+        flushCmd.key = 'flushcomplete' + makeId(10)
+        flushCmd.stackPage = 2
+        processStoredCommand(JSON.stringify(flushCmd))
 
         let containerCmd = {
             siteId: config.siteId,
@@ -283,10 +294,11 @@ const commands = {
             page: 1,
             totalPages: 1,
             stackKey: stackKey,
-            stackPage: 2,
-            stackTotalPages: 2,
+            stackPage: 3,
+            stackTotalPages: 3,
             data: [],
         }
+
         processStoredCommand(JSON.stringify(containerCmd))
         return ['Running buildcomplete commands for ' + config.siteId + '.']
     },
@@ -983,6 +995,32 @@ const trackExport = function (cmd, addingToStack = false) {
                 }
             } else {
                 console.log('Completed EXPORT no exportid found.')
+            }
+        }
+
+        //capture the flush completion after the export
+        if (
+            typeof cmd.cmd != 'undefined' &&
+            cmd.cmd.indexOf('flushcomplete') != -1
+        ) {
+            if (typeof cmd.exportid != 'undefined') {
+                console.log('completed EXPORT', cmd.exportid)
+                if (
+                    typeof cmd.siteId != 'undefined' &&
+                    typeof export_status[cmd.siteId] != 'undefined'
+                ) {
+                    export_status[cmd.siteId].flushed.unshift(cmd)
+                    if (export_status[cmd.siteId].flushed.length > max_length) {
+                        export_status[cmd.siteId].flushed = export_status[
+                            cmd.siteId
+                        ].flushed.slice(0, max_length)
+                    }
+                    export_status[cmd.siteId].complete = export_status[
+                        cmd.siteId
+                    ].complete.filter((ex) => ex.exportid != cmd.exportid)
+                }
+            } else {
+                console.log('Completed Flush no exportid found.')
             }
         }
     }

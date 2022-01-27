@@ -20,18 +20,21 @@ global.export_status = {
         queued: [],
         running: [],
         complete: [],
+        flushed: [],
         stopped: [],
     },
     tf: {
         queued: [],
         running: [],
         complete: [],
+        flushed: [],
         stopped: [],
     },
     fa: {
         queued: [],
         running: [],
         complete: [],
+        flushed: [],
         stopped: [],
     },
 }
