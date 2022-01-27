@@ -100,19 +100,24 @@ const findWhichEnv = function () {
     return environment
 }
 
-const addDisplayMessages = function (messages) {
+const addDisplayMessages = function (messages, config = {}) {
     //uses global displaymessages
     if (!Array.isArray(messages)) {
         messages = [messages]
     }
-    //log them so we can see the messages in the logs too
-    console.log('displayMessages', messages)
     let dateStr = getTimeStamp()
     for (let m = 0; m < messages.length; m++) {
         if (typeof messages[m] != 'string') {
             messages[m] = JSON.stringify(messages[m])
         }
-        displaymessages.unshift(messages[m] + '\n' + dateStr)
+        messages[m] = {
+            msg: messages[m],
+            config: config,
+            date: dateStr,
+        }
+        //log them so we can see the messages in the logs too
+        console.log('displayMessage', messages[m])
+        displaymessages.unshift(messages[m])
     }
 
     let arrLength = displaymessages.length
@@ -263,7 +268,9 @@ const sleep = async function (ms) {
 const commands = {
     flushcomplete: async function (config) {
         //just a function to capture the completed flush
-        return config
+        return [
+            config.siteId + ' Varnish and AWS Cloudfront cache flush complete.',
+        ]
     },
     buildcomplete: async function (config) {
         let stackKey = 'bc' + config.siteId + makeId(10)
@@ -1035,9 +1042,7 @@ const trackExport = function (cmd, addingToStack = false) {
 //or from commands run without the stack
 const runCommand = async function (jsonObj) {
     jsonObj = trackExport(jsonObj)
-    displaymessages.unshift(
-        'Running command:\n' + JSON.stringify(jsonObj, null, 4)
-    )
+    addDisplayMessages('Running command:\n' + JSON.stringify(jsonObj, null, 4))
     let cmdMessages = await commands[jsonObj.cmd](jsonObj)
     addDisplayMessages(cmdMessages)
 }
@@ -1147,7 +1152,7 @@ const processStoredCommand = async function (jsonObj) {
                             .length === jsonObj.stackTotalPages
                     ) {
                         for (let m = 0; m < messages.length; m++) {
-                            displaymessages.unshift(messages)
+                            addDisplayMessages(messages)
                         }
                         //sort them based on page number lowest first then highest
                         storedCommands.stacks[jsonObj.siteId].commands.sort(

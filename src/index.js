@@ -215,7 +215,19 @@ app.get('/', async (req, res) => {
 
         //if this is a display message, just pop it right up
         if (req.query.displaymessage) {
-            addDisplayMessages(req.query.displaymessage)
+            let config = {}
+            let message = req.query.displaymessage
+            if (typeof req.query.config != 'undefined') {
+                if (
+                    typeof req.query.config === 'string' &&
+                    isJson(req.query.config)
+                ) {
+                    config = JSON.parse(req.query.config)
+                } else {
+                    config = req.query.config
+                }
+            }
+            addDisplayMessages(message, config)
         }
         //if this is a task, check if it's parsable json or not,
         //if not then make it into a standard format json object

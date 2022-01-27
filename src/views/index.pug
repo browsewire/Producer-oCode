@@ -173,6 +173,12 @@ style.
         background-color:black;
         color:white;
     }
+    [data-exportid]{
+        cursor:pointer;
+    }
+    [data-exportid]:hover{
+        background-color:gray;
+    }
 
 body
     .control-group-wrap
@@ -280,12 +286,12 @@ body
             .control-group
                 ul.messages 
                     each val, key in displaymessages 
-                        li 
-                            p=val
+                        li(class= (val.config && val.config.exportid ? val.config.exportid : ''))
+                            p=val.msg + '\n' + val.date
             h2 Export Status
             each v, k in sites 
                 .control-group.export-status
-                    h2=v + ' queued'
+                    h2=v + ' queued -- Waiting for the container to start then graphql caches to flush'
                     ul 
                         each val, key in export_status[v].queued 
                             li 
@@ -296,7 +302,7 @@ body
                                 if val.routes
                                     p="Routes: " + val.routes
                                 hr
-                    h2=v + ' running'
+                    h2=v + ' running -- Elder is building this right now'
                     ul 
                         each val, key in export_status[v].running 
                             li 
@@ -307,10 +313,10 @@ body
                                 if val.routes
                                     p="Routes: " + val.routes
                                 hr
-                    h2=v + ' complete'
+                    h2=v + ' complete -- Not yet flushed (Click to jump to errors)'
                     ul 
                         each val, key in export_status[v].complete 
-                            li 
+                            li(data-exportid=val.exportid) 
                                 p="Export -- " + val.exportid
                                 p="Time: " + val.timeStamp
                                 if val.incrementalBuildConfig && val.incrementalBuildConfig.list
@@ -318,10 +324,10 @@ body
                                 if val.incrementalBuildConfig && val.incrementalBuildConfig.routes
                                     p="Routes: " + val.incrementalBuildConfig.routes
                                 hr
-                    h2=v + ' flushed'
+                    h2=v + ' flushed -- Should be visible on the site (Click to jump to errors)'
                     ul 
                         each val, key in export_status[v].flushed 
-                            li 
+                            li(data-exportid=val.exportid)  
                                 p="Export -- " + val.exportid
                                 p="Time: " + val.timeStamp
                                 if val.incrementalBuildConfig && val.incrementalBuildConfig.list
@@ -347,6 +353,23 @@ body
                                 
 
 script.
+    // make completed exports and flushed exports clickable to scroll to errors in the message window
+    let exportIdButtons = document.querySelectorAll('[data-exportid]')
+    if( exportIdButtons ){
+        exportIdButtons.forEach( btn => {
+            let exportid = btn.getAttribute('data-exportid')
+            btn.addEventListener('click', function(e){
+                let errors = document.querySelectorAll('.' + exportid)
+                if(errors){
+                    errors[0].scrollIntoView()
+                }
+                //- if( errors){
+                //-     document.querySelector('.messages').scrollTop = errors[0].offsetTop - 60;
+                //- }
+            })
+        })
+    }
+
     let sidebar = document.querySelector(".messages");
     let topScroll = localStorage.getItem("messages-scroll");
     if (topScroll !== null) {
