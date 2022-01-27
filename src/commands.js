@@ -266,7 +266,6 @@ const commands = {
         return config
     },
     buildcomplete: async function (config) {
-        console.log('buildcomplete', config)
         let stackKey = 'bc' + config.siteId + makeId(10)
 
         let cacheClearCmd = config
