@@ -335,7 +335,7 @@ body
                                 if val.incrementalBuildConfig && val.incrementalBuildConfig.routes
                                     p="Routes: " + val.incrementalBuildConfig.routes
                                 hr
-                    h2=v + ' stopped'
+                    h2=v + ' stopped -- Overridden by another export'
                     ul 
                         each val, key in export_status[v].stopped 
                             li 
