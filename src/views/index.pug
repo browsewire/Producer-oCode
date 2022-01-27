@@ -289,7 +289,8 @@ body
                         li(class= (val.config && val.config.exportid ? val.config.exportid : ''))
                             p=val.msg + '\n' + val.date
             h2 Export Status
-            each v, k in sites 
+            each v, k in sites
+                h2=v.toUpperCase() 
                 .control-group.export-status
                     h2=v + ' queued -- Waiting for the container to start then graphql caches to flush'
                     ul 
@@ -350,6 +351,7 @@ body
                                 if val.incrementalBuildConfig && val.incrementalBuildConfig.routes
                                     p="Routes: " + val.incrementalBuildConfig.routes
                                 hr
+                br
                                 
 
 script.
