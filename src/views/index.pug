@@ -313,7 +313,7 @@ body
                                 if val.routes
                                     p="Routes: " + val.routes
                                 hr
-                    h2=v + ' complete -- Not yet flushed (Click to jump to errors)'
+                    h2=v + ' complete -- Built but not yet flushed (Click to jump to errors)'
                     ul 
                         each val, key in export_status[v].complete 
                             li(data-exportid=val.exportid) 
