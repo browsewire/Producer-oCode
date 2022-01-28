@@ -285,13 +285,6 @@ const commands = {
         cacheClearCmd.totalPages = 1
         processStoredCommand(JSON.stringify(cacheClearCmd))
 
-        //tag the flush complete so that the export tracker sees it
-        let flushCmd = cacheClearCmd
-        flushCmd.cmd = 'flushcomplete'
-        flushCmd.key = 'flushcomplete' + makeId(10)
-        flushCmd.stackPage = 2
-        processStoredCommand(JSON.stringify(flushCmd))
-
         let containerCmd = {
             siteId: config.siteId,
             key: 'container' + makeId(10),
@@ -300,10 +293,17 @@ const commands = {
             page: 1,
             totalPages: 1,
             stackKey: stackKey,
-            stackPage: 3,
+            stackPage: 2,
             stackTotalPages: 3,
             data: [],
         }
+
+        //tag the flush complete so that the export tracker sees it
+        let flushCmd = cacheClearCmd
+        flushCmd.cmd = 'flushcomplete'
+        flushCmd.key = 'flushcomplete' + makeId(10)
+        flushCmd.stackPage = 3
+        processStoredCommand(JSON.stringify(flushCmd))
 
         processStoredCommand(JSON.stringify(containerCmd))
         return ['Running buildcomplete commands for ' + config.siteId + '.']
