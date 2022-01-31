@@ -5,6 +5,7 @@ const util = require('util')
 /* promisify the exec function to run bash scripts async */
 const exec = util.promisify(require('child_process').exec)
 const MurmurHash3 = require('imurmurhash')
+const producer = require('./broker')
 
 /*
 Distributions:
@@ -48,7 +49,43 @@ const storedCommands = {
         data: [],
         pages: 0,
     },
+    stacks: {
+        dn: {
+            stackKey: '',
+            commands: [],
+        },
+        tf: {
+            stackKey: '',
+            commands: [],
+        },
+        fa: {
+            stackKey: '',
+            commands: [],
+        },
+        api: {
+            stackKey: '',
+            commands: [],
+        },
+        other: {
+            stackKey: '',
+            commands: [],
+        },
+    },
 }
+
+const makeId = function (length) {
+    var result = ''
+    var characters =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    var charactersLength = characters.length
+    for (var i = 0; i < length; i++) {
+        result += characters.charAt(
+            Math.floor(Math.random() * charactersLength)
+        )
+    }
+    return result
+}
+
 const findWhichEnv = function () {
     let environment = 'local'
     if (process.env.MAG_NAME.indexOf('m2-dev') != -1) {
@@ -63,6 +100,32 @@ const findWhichEnv = function () {
     return environment
 }
 
+const addDisplayMessages = function (messages, config = {}) {
+    //uses global displaymessages
+    if (!Array.isArray(messages)) {
+        messages = [messages]
+    }
+    let dateStr = getTimeStamp()
+    for (let m = 0; m < messages.length; m++) {
+        if (typeof messages[m] != 'string') {
+            messages[m] = JSON.stringify(messages[m])
+        }
+        messages[m] = {
+            msg: messages[m],
+            config: config,
+            date: dateStr,
+        }
+        //log them so we can see the messages in the logs too
+        console.log('displayMessage', messages[m])
+        displaymessages.unshift(messages[m])
+    }
+
+    let arrLength = displaymessages.length
+    let maxNumber = 500
+    if (arrLength > maxNumber) {
+        displaymessages.splice(arrLength - maxNumber, arrLength)
+    }
+}
 /*
 Read a directory and sort the results by when they were last editted
 */
@@ -109,7 +172,7 @@ const getTimeStamp = function () {
     let dateStr = new Date()
     dateStr = convertTZ(dateStr, 'America/Chicago')
     dateStr = dateStr.toLocaleString()
-    return dateStr
+    return dateStr + ' CST'
 }
 const makeCacheKey = function (source, query, vars) {
     let hashState = MurmurHash3(source + query + JSON.stringify(vars))
@@ -157,12 +220,14 @@ const execFunction = async function (execString) {
     try {
         let { stdout, stderr, error } = await exec(execString)
         if (error) {
-            messages.push(`error: ${error.message}`)
+            messages.push(
+                `bash command:\n${execString}\nerror: ${error.message}`
+            )
         }
         if (stderr) {
-            messages.push(`stderr: ${stderr}`)
+            messages.push(`Bash command:\n${execString}\nstderr: ${stderr}`)
         }
-        messages.push(`stdout: ${stdout}`)
+        messages.push(`Bash command:\n${execString}\nstdout: ${stdout}`)
         return {
             error,
             stderr,
@@ -197,7 +262,181 @@ const sleep = async function (ms) {
     let sleepMessages = await execFunction(cmd)
     return sleepMessages
 }
+/*
+    Commands that are run by the processStoredCommands
+*/
 const commands = {
+    flushcomplete: async function (config) {
+        //just a function to capture the completed flush
+        return [
+            config.siteId + ' Varnish and AWS Cloudfront cache flush complete.',
+        ]
+    },
+    buildcomplete: async function (config) {
+        let stackKey = 'bc' + config.siteId + makeId(10)
+
+        let cacheClearCmd = config
+        cacheClearCmd.cmd = 'cacheclear'
+        cacheClearCmd.stackKey = stackKey
+        cacheClearCmd.stackPage = 1
+        cacheClearCmd.stackTotalPages = 3
+        cacheClearCmd.key = 'cacheclear' + makeId(10)
+        cacheClearCmd.page = 1
+        cacheClearCmd.totalPages = 1
+        processStoredCommand(JSON.stringify(cacheClearCmd))
+
+        let containerCmd = {
+            siteId: config.siteId,
+            key: 'container' + makeId(10),
+            cmd: 'container',
+            containerCmd: 'down',
+            page: 1,
+            totalPages: 1,
+            stackKey: stackKey,
+            stackPage: 2,
+            stackTotalPages: 3,
+            data: [],
+        }
+
+        //tag the flush complete so that the export tracker sees it
+        let flushCmd = cacheClearCmd
+        flushCmd.cmd = 'flushcomplete'
+        flushCmd.key = 'flushcomplete' + makeId(10)
+        flushCmd.stackPage = 3
+        processStoredCommand(JSON.stringify(flushCmd))
+
+        processStoredCommand(JSON.stringify(containerCmd))
+        return ['Running buildcomplete commands for ' + config.siteId + '.']
+    },
+    container: async function (config) {
+        console.log('config in container command', config)
+        /*
+        {
+            siteId: 'dn',
+            cmd: 'container',
+            page: 1,
+            totalPages: 1,
+            containerCommand: 'up' || 'down',
+            data:[],
+            key:'asdfasdf',
+            stackKey:???,
+            stackPage: ???,
+            stackTotalPages: ???
+        }
+        */
+
+        let messages = []
+        //check environment
+        let env = findWhichEnv()
+        if (env == 'local') {
+            messages.push('Skipping container command in local environment.')
+            return messages
+        }
+        //check containerCommand
+        //get namespace
+        //build command
+        let namespace = process.env.NAMESPACE
+        let canRun = true
+        if (namespace === undefined) {
+            canRun = false
+            messages.push(
+                'Container Command could not run process.env.NAMESPACE is undefined.'
+            )
+        }
+        if (typeof config.siteId === 'undefined') {
+            canRun = false
+            messages.push(
+                'Container Command could not run, siteId is not provided in config.'
+            )
+        }
+        if (typeof config.containerCmd === 'undefined') {
+            canRun = false
+            messages.push(
+                'Container Command could not run, containerCmd is not provided in config.'
+            )
+        }
+        if (canRun) {
+            let execCmd = ''
+            let serviceName = config.siteId
+            if (config.containerCmd === 'up') {
+                //Producer needs to run this before each export to start the service
+                execCmd =
+                    'ignore=`aws --region us-east-1 ecs update-service --service ' +
+                    serviceName +
+                    ' --cluster  ' +
+                    namespace +
+                    '-cluster --desired-count 1 | jq .`; ' +
+                    'count=`aws --region us-east-1 ecs describe-services --service  ' +
+                    serviceName +
+                    ' --cluster $NAMESPACE-cluster | jq .services[].deployments[].runningCount`; ' +
+                    'while [ $count -lt 1 ]; ' +
+                    'do ' +
+                    'count=`aws --region us-east-1 ecs describe-services --service  ' +
+                    serviceName +
+                    ' --cluster ' +
+                    namespace +
+                    '-cluster | jq .services[].deployments[].runningCount`; ' +
+                    'done'
+            }
+            if (config.containerCmd === 'down') {
+                //after finishing export
+                execCmd =
+                    'ignore=`aws --region us-east-1 ecs update-service --service ' +
+                    serviceName +
+                    ' --cluster ' +
+                    namespace +
+                    '-cluster --desired-count 0 | jq .`'
+            }
+
+            if (execCmd.length > 0) {
+                if (env === 'local') {
+                    messages.push(
+                        'Skipping container command in local environment: ' +
+                            execCmd
+                    )
+                } else {
+                    let execMessages = await execFunction(execCmd)
+                    messages = messages.concat(execMessages.messages)
+                    //wait 5 seconds after the container starts
+                    //up to give the initial commands time to run
+                    if (config.containerCmd === 'up') {
+                        let sleepMessages = await sleep(5000)
+                        messages = messages.concat(sleepMessages.messages)
+                    }
+                }
+            } else {
+                messages.push(
+                    'No matching container command found, skipping container command.'
+                )
+            }
+        }
+
+        console.log('container command messages', messages)
+
+        return messages
+    },
+    rabbitmq: async function (config) {
+        console.log('config in commands rabbitmq', config)
+        let producerMessage = ''
+        if (typeof config.producerMessage == 'undefined') {
+            for (arg in config) {
+                producerMessage += arg + '='
+                if (typeof config[arg] == 'Object') {
+                    producerMessage += config[arg].join(',')
+                } else {
+                    producerMessage += config.arg
+                }
+                producerMessage += '&'
+            }
+        } else {
+            producerMessage = config.producerMessage
+        }
+        console.log('producerMessage in rabbitmq command', producerMessage)
+        producer.start(producerMessage).catch((err) => {
+            console.log(err)
+        })
+        return [config.siteId + ' ' + config.task + ' started.']
+    },
     multiFlushVarnish: async function (config) {
         let messages = []
         if (typeof config.paths == 'undefined' || config.paths.length == 0) {
@@ -230,6 +469,7 @@ const commands = {
             messages = messages.concat(varnishMessages[i])
         }
         let whichEnv = findWhichEnv()
+        addDisplayMessages('Flushing ' + config.siteId + ' Varnish Cache.')
         if (whichEnv != 'local') {
             let sleepMessages = await sleep(15000)
             messages = messages.concat(sleepMessages.messages)
@@ -275,7 +515,8 @@ const commands = {
         }
 
         curlCommand += '.' + domain + '.com' + config.path
-        messages.push('curl command: ' + curlCommand)
+        // messages.push('Varnish Flush curl command:\n' + curlCommand)
+        console.log('Varnish Flush curl command:\n' + curlCommand)
 
         let execMessages = await execFunction(curlCommand)
         console.log('curl execMessages', execMessages)
@@ -372,6 +613,7 @@ const commands = {
         config = {
             distributionId: '',
             invalidationId: '',
+            siteId: '',
         }
     ) {
         try {
@@ -385,6 +627,11 @@ const commands = {
             let thereWasAnError = false
             while (status != 'Completed') {
                 console.log('in while loop waiting for cache to clear')
+                addDisplayMessages(
+                    'Waiting for ' +
+                        config.siteId +
+                        ' AWS Cloudfront cache to clear.'
+                )
                 execMessages = await execFunction(checkcmd)
                 console.log('while loop execMessages', execMessages)
                 cacheResponseJson = JSON.parse(execMessages.stdout)
@@ -437,23 +684,26 @@ const commands = {
         }
 
         if (whichEnv === 'local') {
+            // whichEnv = 'dev'
             messages.push(
-                config.siteId + ': skipping cache clear in ' + whichEnv + ' env'
+                'Skipping ' +
+                    config.siteId +
+                    ' AWS Cloudfront cache clear in ' +
+                    whichEnv +
+                    ' environment.'
             )
             return messages
         }
 
-        messages.push(
-            'Command: Cacheclear. Cacheclear Config: ' + JSON.stringify(config)
-        )
+        addDisplayMessages('Clearing ' + siteId + ' AWS Cloudfront cache.')
 
         if (typeof awsDistributions[siteId] == 'undefined') {
-            messages.push('missing siteId in awsDistributions in cacheflush')
+            messages.push('Missing siteId in awsDistributions in cacheflush.')
             return messages
         }
         if (typeof awsDistributions[siteId][whichEnv] == 'undefined') {
             messages.push(
-                'missing siteId env in awsDistributions in cacheflush'
+                'Missing siteId env in awsDistributions in cacheflush.'
             )
             return messages
         }
@@ -545,13 +795,11 @@ const commands = {
             if (isJson(execMessages.stdout)) {
                 let cacheResponseJson = JSON.parse(execMessages.stdout)
                 if (cacheResponseJson.Invalidation.Status == 'Completed') {
-                    let dateStr = getTimeStamp()
                     messages = [
                         whichEnv +
                             ' -- ' +
                             config.siteId +
-                            ' -- cache cleared. Time: ' +
-                            dateStr,
+                            ' -- cache cleared.',
                     ]
 
                     return messages
@@ -576,11 +824,10 @@ const commands = {
             } catch (err) {
                 //this is most likely cause by a flush completing and the file being removed
                 console.log('err in trying to read checkFile', err)
-                let dateStr = getTimeStamp()
+
                 //we should see another message from the previous cache clear
                 return [
-                    dateStr +
-                        ': unable to clear cache again, it appears it was just cleared',
+                    'Unable to clear cache again, it appears it was just cleared',
                 ]
             }
         }
@@ -588,9 +835,14 @@ const commands = {
         let { checkMessages, thereWasAnError } = await commands.checkrunning({
             distributionId,
             invalidationId,
+            siteId: config.siteId,
         })
+        addDisplayMessages('After checkrunning')
         if (thereWasAnError) {
             console.log('there was an error, trying the cache clear again')
+            addDisplayMessages(
+                'there was an error, trying the cache clear again'
+            )
             //try again if there was a problem
             if (typeof config.attempts == 'undefined') {
                 config.attempts = 0
@@ -603,7 +855,7 @@ const commands = {
             }
             let sleepMessages = await sleep(15000)
             messages = messages.concat(sleepMessages.messages)
-            let newMessages = commands.cacheclear(config)
+            let newMessages = await commands.cacheclear(config)
             messages = messages.concat(newMessages)
         }
         if (isOriginalCacheQuery) {
@@ -636,15 +888,8 @@ const commands = {
 
         console.log('messages in cacheclear', messages)
 
-        let dateStr = getTimeStamp()
         //overwrite the messages to just show a short message on the producer screen
-        messages = [
-            whichEnv +
-                ' -- ' +
-                config.siteId +
-                ' -- cache cleared. Time: ' +
-                dateStr,
-        ]
+        messages = [whichEnv + ' -- ' + config.siteId + ' -- cache cleared.']
         messages = varnishMessages.concat(messages)
 
         // messages.push(
@@ -658,6 +903,150 @@ const commands = {
         return messages
     },
 }
+
+const trackExport = function (cmd, addingToStack = false) {
+    cmd.timeStamp = getTimeStamp()
+    //max number of logs to save
+    let max_length = 4
+    if (addingToStack) {
+        //if adding to stack and the stackKey is different than what we already have
+        //remove it
+        //if adding to stack, add the export id
+        //add stack command to export_status[siteId].queue
+        if (
+            typeof cmd.task != 'undefined' &&
+            cmd.task.indexOf('export') != -1
+        ) {
+            let exportid = 'exportid__' + makeId(10)
+            cmd.producerMessage += '&exportid=' + exportid
+            cmd.exportid = exportid
+            console.log('queued EXPORT', exportid)
+            if (
+                typeof cmd.siteId != 'undefined' &&
+                typeof export_status[cmd.siteId] != 'undefined'
+            ) {
+                if (export_status[cmd.siteId].queued.length) {
+                    export_status[cmd.siteId].stopped = export_status[
+                        cmd.siteId
+                    ].queued.concat(export_status[cmd.siteId].stopped)
+                    if (export_status[cmd.siteId].stopped.length > max_length) {
+                        export_status[cmd.siteId].stopped = export_status[
+                            cmd.siteId
+                        ].stopped.slice(0, max_length)
+                    }
+                }
+                export_status[cmd.siteId].queued = [cmd]
+            }
+        }
+    }
+    if (!addingToStack) {
+        //if not in stack and its an export, check if a matching
+
+        //this is an export
+        if (
+            typeof cmd.task != 'undefined' &&
+            cmd.task.indexOf('export') != -1
+        ) {
+            if (typeof cmd.exportid != 'undefined') {
+                console.log('active EXPORT', cmd.exportid)
+                if (
+                    typeof cmd.siteId != 'undefined' &&
+                    typeof export_status[cmd.siteId] != 'undefined'
+                ) {
+                    if (export_status[cmd.siteId].running.length > 0) {
+                        export_status[cmd.siteId].stopped = export_status[
+                            cmd.siteId
+                        ].running.concat(export_status[cmd.siteId].stopped)
+                        if (
+                            export_status[cmd.siteId].stopped.length >
+                            max_length
+                        ) {
+                            export_status[cmd.siteId].stopped = export_status[
+                                cmd.siteId
+                            ].stopped.slice(0, max_length)
+                        }
+                    }
+                    export_status[cmd.siteId].running = [cmd]
+                    export_status[cmd.siteId].queued = export_status[
+                        cmd.siteId
+                    ].queued.filter((ex) => ex.exportid != cmd.exportid)
+                }
+            } else {
+                console.log('Active EXPORT no exportid found.')
+            }
+        }
+
+        //this is a completed export
+        if (
+            typeof cmd.cmd != 'undefined' &&
+            cmd.cmd.indexOf('buildcomplete') != -1
+        ) {
+            if (typeof cmd.exportid != 'undefined') {
+                console.log('completed EXPORT', cmd.exportid)
+                if (
+                    typeof cmd.siteId != 'undefined' &&
+                    typeof export_status[cmd.siteId] != 'undefined'
+                ) {
+                    export_status[cmd.siteId].complete.unshift(cmd)
+                    if (
+                        export_status[cmd.siteId].complete.length > max_length
+                    ) {
+                        export_status[cmd.siteId].complete = export_status[
+                            cmd.siteId
+                        ].complete.slice(0, max_length)
+                    }
+                    export_status[cmd.siteId].running = export_status[
+                        cmd.siteId
+                    ].running.filter((ex) => ex.exportid != cmd.exportid)
+                }
+            } else {
+                console.log('Completed EXPORT no exportid found.')
+            }
+        }
+
+        //capture the flush completion after the export
+        if (
+            typeof cmd.cmd != 'undefined' &&
+            cmd.cmd.indexOf('flushcomplete') != -1
+        ) {
+            if (typeof cmd.exportid != 'undefined') {
+                console.log('completed EXPORT', cmd.exportid)
+                if (
+                    typeof cmd.siteId != 'undefined' &&
+                    typeof export_status[cmd.siteId] != 'undefined'
+                ) {
+                    export_status[cmd.siteId].flushed.unshift(cmd)
+                    if (export_status[cmd.siteId].flushed.length > max_length) {
+                        export_status[cmd.siteId].flushed = export_status[
+                            cmd.siteId
+                        ].flushed.slice(0, max_length)
+                    }
+                    export_status[cmd.siteId].complete = export_status[
+                        cmd.siteId
+                    ].complete.filter((ex) => ex.exportid != cmd.exportid)
+                }
+            } else {
+                console.log('Completed Flush no exportid found.')
+            }
+        }
+    }
+
+    // export_status.dn.queued
+    // export_status.dn.running
+    // export_status.dn.complete
+
+    return cmd
+}
+
+//all commands pass thru here either from the stack
+//or from commands run without the stack
+const runCommand = async function (jsonObj) {
+    jsonObj = trackExport(jsonObj)
+    addDisplayMessages('Running command:\n' + JSON.stringify(jsonObj, null, 4))
+    let cmdMessages = await commands[jsonObj.cmd](jsonObj)
+    addDisplayMessages(cmdMessages)
+}
+
 const processStoredCommand = async function (jsonObj) {
     let messages = []
     jsonObj = JSON.parse(jsonObj)
@@ -708,11 +1097,123 @@ const processStoredCommand = async function (jsonObj) {
                 typeof commands[jsonObj.cmd] != 'undefined'
             ) {
                 jsonObj.data = storedCommands[jsonObj.siteId].data
-                messages = await commands[jsonObj.cmd](jsonObj)
+                if (
+                    typeof jsonObj.stackPage != 'undefined' &&
+                    typeof jsonObj.stackTotalPages != 'undefined' &&
+                    typeof jsonObj.stackKey != 'undefined'
+                ) {
+                    if (
+                        jsonObj.stackKey !=
+                        storedCommands.stacks[jsonObj.siteId].stackKey
+                    ) {
+                        addDisplayMessages(
+                            'New stack key supplied for ' +
+                                jsonObj.siteId +
+                                '. Resetting the ' +
+                                jsonObj.siteId +
+                                ' command stack.\n-----------------X'
+                        )
+                        //if there is a new stackKey provided for the same site, the old stack is wiped
+                        //and a new one is started
+                        // console.log(
+                        //     'Old stackKey was: ' +
+                        //         storedCommands.stacks[jsonObj.siteId].stackKey +
+                        //         '  -- New stackKey supplied: ' +
+                        //         jsonObj.stackKey +
+                        //         ' resetting stack '
+                        // )
+                        storedCommands.stacks[jsonObj.siteId].stackKey =
+                            jsonObj.stackKey
+                        storedCommands.stacks[jsonObj.siteId].commands = []
+                    }
+                    // console.log('adding stored command to stack', jsonObj)
+                    storedCommands.stacks[jsonObj.siteId].commands.push(jsonObj)
+
+                    //run this command through the trackExport script
+                    trackExport(jsonObj, true)
+
+                    let dMsg =
+                        'Adding command to ' +
+                        jsonObj.siteId +
+                        ' stack: ' +
+                        jsonObj.stackPage +
+                        ' of ' +
+                        jsonObj.stackTotalPages +
+                        '\n' +
+                        jsonObj.cmd +
+                        ' '
+                    dMsg += jsonObj.task ?? ''
+                    dMsg += ' '
+                    dMsg += jsonObj.producerMessage ?? ''
+                    dMsg += jsonObj.containerCmd ?? ''
+                    addDisplayMessages(dMsg)
+                    if (
+                        storedCommands.stacks[jsonObj.siteId].commands
+                            .length === jsonObj.stackTotalPages
+                    ) {
+                        for (let m = 0; m < messages.length; m++) {
+                            addDisplayMessages(messages)
+                        }
+                        //sort them based on page number lowest first then highest
+                        storedCommands.stacks[jsonObj.siteId].commands.sort(
+                            (a, b) => {
+                                return a.stackPage - b.stackPage
+                            }
+                        )
+                        // console.log(
+                        //     'sorted commands',
+                        //     storedCommands.stacks[jsonObj.siteId].commands
+                        // )
+                        while (
+                            storedCommands.stacks[jsonObj.siteId].commands
+                                .length > 0
+                        ) {
+                            //pop the lowest numbered command off the command stack
+                            //and run it
+                            let stackCmd =
+                                storedCommands.stacks[
+                                    jsonObj.siteId
+                                ].commands.shift()
+                            addDisplayMessages(
+                                '-----------------^\nStarting Stack Command ' +
+                                    stackCmd.stackPage +
+                                    ' of ' +
+                                    stackCmd.stackTotalPages +
+                                    ' from ' +
+                                    stackCmd.siteId +
+                                    ' stack'
+                            )
+                            // addDisplayMessages(
+                            //     'Running command ' +
+                            //         stackCmd.stackPage +
+                            //         ' of ' +
+                            //         stackCmd.stackTotalPages +
+                            //         ' from ' +
+                            //         stackCmd.siteId +
+                            //         ' stack:\n' +
+                            //         JSON.stringify(stackCmd, null, 4)
+                            // )
+                            await runCommand(stackCmd)
+
+                            // let cmdMessages = await commands[stackCmd.cmd](
+                            //     stackCmd
+                            // )
+                            // addDisplayMessages(cmdMessages)
+                        }
+                    }
+                } else {
+                    // displaymessages.unshift(
+                    //     'Running command:\n' + JSON.stringify(jsonObj, null, 4)
+                    // )
+                    // let cmdMessages = await commands[jsonObj.cmd](jsonObj)
+                    // addDisplayMessages(cmdMessages)
+                    await runCommand(jsonObj)
+                }
             }
         }
     }
-    return messages
+    addDisplayMessages(messages)
+    return true
 }
 
 const isJson = function (item) {
@@ -739,4 +1240,6 @@ module.exports = {
     convertTZ,
     getTimeStamp,
     processStoredCommand,
+    makeId,
+    addDisplayMessages,
 }
