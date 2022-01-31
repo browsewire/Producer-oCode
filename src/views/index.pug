@@ -12,6 +12,8 @@
 - var tf_dev = 'https://' + ports.host_name + '-elder.1215diamonds.com'
 - var fa_dev = 'https://' + ports.host_name + '-elder.foreverartisans.com'
 - var displaymessages = displaymessages
+- var export_status = export_status
+- var sites = ['dn','tf','fa']
 
 
 doctype html
@@ -47,6 +49,16 @@ style.
         display:flex;
         flex-flow:column;
         align-items:flex-start;
+    }
+    .control-group.export-status ul{
+        width:100%;
+        max-height:8em;
+        overflow-y:scroll;
+        border:1px solid gray;
+        margin:0;
+    }
+    .control-group.export-status ul p{
+        margin:0;
     }
     .messages{
         width:100%;
@@ -161,11 +173,18 @@ style.
         background-color:black;
         color:white;
     }
+    [data-exportid]{
+        cursor:pointer;
+    }
+    [data-exportid]:hover{
+        background-color:gray;
+    }
 
 body
     .control-group-wrap
         .control-group-wrap-inner
             .control-group
+                h2=ports.host_name
                 a(href=wpurl, target='_blank') Wordpress Admin (u:wpcms, p:wpcms)
                 a(href=magurl, target='_blank') Magento Admin (login in lastpass)
                 h2 Exported Sites
@@ -211,9 +230,6 @@ body
                                 input#path(type='text' name='list')
                                 div.remove X
                     input(type='submit' value="Run Export")
-
-               
-                
 
             .control-group 
                 h2 Dev
@@ -267,14 +283,95 @@ body
                 p The front end for diamondnexus.com, 1215diamonds.com, and foreverartisans.com is generated using the Elder framework. Elder is a node js application framework. Elder uses Svelte as its component framework. <br/> Elder pages are built with Svelte components. With Svelte alone, javascript is loaded onto a page, then the the html is rendered using javascript functions. Elder pre-renders the html using node js on the server, so that when the page loads, the html is immediately ready to view and is SEO friendly. After the page is loaded, the html is “hydrated” so that all of the js functionality of the app is attached. <br/>Elder can run in modes to either server side render pages on the fly or statically pre-render all of the pages on a site and store those static pages (including html, js and css) in a folder that can be served up like a traditional basic html site.<br/>The front end for these site is headless, meaning they get most of their data, text, images, etc, from a separate back-end. We are using Magento for product data and Wordpress for CMS and other custom data. Additionally, at this stage we will be using the default Magento Checkout, Cart, and User areas. The way we will jump between the Magento checkout and the rest of the site is to serve the sites through NGINX and switch based on the url.<br/>For our set-up, we are running Sapper in server side mode for development. This means that changes made to the code or in the databases will be viewable right away.<br/>For production we are using the static version of the site, meaning that in order to make changes, we need to run an export of the site. At this point in Sapper development and static rendering in general, we have to re-render the whole site when there are changes. This is because the partial files that are served as partial page loads are generated using unique hashes. There have been some recent improvements in this in the static rendering scene and this may be on the road map for Sapper coming soon.<br/>The front-end controller page, which you are viewing now, accepts get requests through a query parameter aka ?task=dev—dn. It turns these queries into rabbitmq tasks that are received by a node script listening for each app. Each app can be told to run in dev mode, which include dynamic server side rendering, or it can be told to export the files, which can then be served either through a node script (currently there’s a link to do this) or by NGINX.
 
         .control-group-wrap-inner
-                    .control-group
-                        ul.messages 
-                            each val, key in displaymessages 
-                                li 
-                                    p=val
-
+            .control-group
+                ul.messages 
+                    each val, key in displaymessages 
+                        li(class= (val.config && val.config.exportid ? val.config.exportid : ''))
+                            p=val.msg + '\n' + val.date
+            h2 Export Status
+            each v, k in sites
+                h2=v.toUpperCase() 
+                .control-group.export-status
+                    h2=v + ' queued -- Waiting for the container to start then graphql caches to flush'
+                    ul 
+                        each val, key in export_status[v].queued 
+                            li 
+                                p="Export -- " + val.exportid
+                                p="Time: " + val.timeStamp
+                                if val.list
+                                    p="List: " + val.list
+                                if val.routes
+                                    p="Routes: " + val.routes
+                                hr
+                    h2=v + ' running -- Elder is building this right now'
+                    ul 
+                        each val, key in export_status[v].running 
+                            li 
+                                p="Export -- " + val.exportid
+                                p="Time: " + val.timeStamp
+                                if val.list
+                                    p="List: " + val.list
+                                if val.routes
+                                    p="Routes: " + val.routes
+                                hr
+                    h2=v + ' complete -- Built but not yet flushed (Click to jump to errors)'
+                    ul 
+                        each val, key in export_status[v].complete 
+                            li(data-exportid=val.exportid) 
+                                p="Export -- " + val.exportid
+                                p="Time: " + val.timeStamp
+                                if val.incrementalBuildConfig && val.incrementalBuildConfig.list
+                                    p="List: " + val.incrementalBuildConfig.list
+                                if val.incrementalBuildConfig && val.incrementalBuildConfig.routes
+                                    p="Routes: " + val.incrementalBuildConfig.routes
+                                hr
+                    h2=v + ' flushed -- Should be visible on the site (Click to jump to errors)'
+                    ul 
+                        each val, key in export_status[v].flushed 
+                            li(data-exportid=val.exportid)  
+                                p="Export -- " + val.exportid
+                                p="Time: " + val.timeStamp
+                                if val.incrementalBuildConfig && val.incrementalBuildConfig.list
+                                    p="List: " + val.incrementalBuildConfig.list
+                                if val.incrementalBuildConfig && val.incrementalBuildConfig.routes
+                                    p="Routes: " + val.incrementalBuildConfig.routes
+                                hr
+                    h2=v + ' stopped -- Overridden by another export'
+                    ul 
+                        each val, key in export_status[v].stopped 
+                            li 
+                                p="Export -- " + val.exportid
+                                p="Time: " + val.timeStamp
+                                if val.list
+                                    p="List: " + val.list
+                                if val.routes
+                                    p="Routes: " + val.routes
+                                if val.incrementalBuildConfig && val.incrementalBuildConfig.list
+                                    p="List: " + val.incrementalBuildConfig.list
+                                if val.incrementalBuildConfig && val.incrementalBuildConfig.routes
+                                    p="Routes: " + val.incrementalBuildConfig.routes
+                                hr
+                br
+                                
 
 script.
+    // make completed exports and flushed exports clickable to scroll to errors in the message window
+    let exportIdButtons = document.querySelectorAll('[data-exportid]')
+    if( exportIdButtons ){
+        exportIdButtons.forEach( btn => {
+            let exportid = btn.getAttribute('data-exportid')
+            btn.addEventListener('click', function(e){
+                let errors = document.querySelectorAll('.' + exportid)
+                if(errors){
+                    errors[0].scrollIntoView()
+                }
+                //- if( errors){
+                //-     document.querySelector('.messages').scrollTop = errors[0].offsetTop - 60;
+                //- }
+            })
+        })
+    }
+
     let sidebar = document.querySelector(".messages");
     let topScroll = localStorage.getItem("messages-scroll");
     if (topScroll !== null) {
