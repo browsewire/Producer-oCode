@@ -21,8 +21,8 @@ for issue in issues.json()["items"]:
 mark_deployed() {
   curl -d '{"labels": ["deployed_'$4'"]}' -X POST -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels
   current=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.custom_fields[] | select(.name=="ENV")' | jq '.value'`
-  ignored_states=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.status.id'`
-  if [ $ignored_states != "sc180197179_9Rg7JJvD" ] && [ $ignored_states != "sc180197179_fYGjN6Gb" ]
+  ignored_states=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.status.status'`
+  if [ $ignored_states != "in progress" ] && [ $ignored_states != "spec'd ready for developer" ]
   then
     if [ $4 == "staging" ]
     then
@@ -46,8 +46,8 @@ mark_deployed() {
 }
 
 rm_deployed() {
-  ignored_states=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.status.id'`
-  if [ $ignored_states != "sc180197179_9Rg7JJvD" ] && [ $ignored_states != "sc180197179_fYGjN6Gb" ]
+  ignored_states=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.status.status'`
+  if [ $ignored_states != "in progress" ] && [ $ignored_states != "spec'd ready for developer" ]
   then
     curl -X DELETE -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels/deployed_$4
     curl -X DELETE -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
@@ -56,16 +56,16 @@ rm_deployed() {
 }
 
 mark_conflict() {
-  ignored_states=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.status.id'`
-  if [ $ignored_states != "sc180197179_9Rg7JJvD" ] && [ $ignored_states != "sc180197179_fYGjN6Gb" ]
+  ignored_states=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.status.status'`
+  if [ $ignored_states != "in progress" ] && [ $ignored_states != "spec'd ready for developer" ]
   then
     curl -d '{"labels": ["conflict_'$4'"]}' -X POST -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels
   fi
 }
 
 rm_conflict() {
-  ignored_states=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.status.id'`
-  if [ $ignored_states != "sc180197179_9Rg7JJvD" ] && [ $ignored_states != "sc180197179_fYGjN6Gb" ]
+  ignored_states=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.status.status'`
+  if [ $ignored_states != "in progress" ] && [ $ignored_states != "spec'd ready for developer" ]
   then
     curl -X DELETE -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels/conflict_$4
   fi
