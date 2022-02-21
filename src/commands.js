@@ -273,17 +273,37 @@ const commands = {
         ]
     },
     buildcomplete: async function (config) {
+        let whichEnv = findWhichEnv()
+        let totalStackPages = 3
+        let currentStackPage = 1
+        let dblTapFlush = false
+        //if (whichEnv === 'stage' || whichEnv === 'prod') {
+        dblTapFlush = true
+        totalStackPages = 4
+        //}
+
         let stackKey = 'bc' + config.siteId + makeId(10)
 
         let cacheClearCmd = config
         cacheClearCmd.cmd = 'cacheclear'
         cacheClearCmd.stackKey = stackKey
-        cacheClearCmd.stackPage = 1
-        cacheClearCmd.stackTotalPages = 3
+        cacheClearCmd.stackPage = currentStackPage
+        cacheClearCmd.stackTotalPages = totalStackPages
         cacheClearCmd.key = 'cacheclear' + makeId(10)
         cacheClearCmd.page = 1
         cacheClearCmd.totalPages = 1
         processStoredCommand(JSON.stringify(cacheClearCmd))
+        currentStackPage++
+
+        if (dblTapFlush) {
+            addDisplayMessages('DOUBLE TAP FLUSH')
+            let cacheClearCmd2 = cacheClearCmd
+            cacheClearCmd2.key = cacheClearCmd2.key + 'x2'
+            cacheClearCmd2.stackKey = cacheClearCmd2.stackKey
+            cacheClearCmd2.stackPage = currentStackPage
+            processStoredCommand(JSON.stringify(cacheClearCmd2))
+            currentStackPage++
+        }
 
         let containerCmd = {
             siteId: config.siteId,
@@ -293,19 +313,20 @@ const commands = {
             page: 1,
             totalPages: 1,
             stackKey: stackKey,
-            stackPage: 2,
-            stackTotalPages: 3,
+            stackPage: currentStackPage,
+            stackTotalPages: totalStackPages,
             data: [],
         }
+        processStoredCommand(JSON.stringify(containerCmd))
+        currentStackPage++
 
         //tag the flush complete so that the export tracker sees it
         let flushCmd = cacheClearCmd
         flushCmd.cmd = 'flushcomplete'
         flushCmd.key = 'flushcomplete' + makeId(10)
-        flushCmd.stackPage = 3
+        flushCmd.stackPage = currentStackPage
         processStoredCommand(JSON.stringify(flushCmd))
 
-        processStoredCommand(JSON.stringify(containerCmd))
         return ['Running buildcomplete commands for ' + config.siteId + '.']
     },
     container: async function (config) {
@@ -685,13 +706,14 @@ const commands = {
 
         if (whichEnv === 'local') {
             // whichEnv = 'dev'
-            messages.push(
+            addDisplayMessages(
                 'Skipping ' +
                     config.siteId +
                     ' AWS Cloudfront cache clear in ' +
                     whichEnv +
                     ' environment.'
             )
+
             return messages
         }
 
