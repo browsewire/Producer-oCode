@@ -273,7 +273,7 @@ const commands = {
         ]
     },
     buildcomplete: async function (config) {
-        let whichEnv = findWhichEnv()
+        //let whichEnv = findWhichEnv()
         let totalStackPages = 3
         let currentStackPage = 1
         let dblTapFlush = false
