@@ -704,12 +704,7 @@ const commands = {
             config.varnishFlushedAlready = true
         }
 
-        if (
-            whichEnv === 'local' ||
-            whichEnv === 'dev' ||
-            whichEnv === 'stage'
-        ) {
-            // if (whichEnv === 'local') {
+        if (whichEnv === 'local') {
             // whichEnv = 'dev'
             addDisplayMessages(
                 'Skipping ' +
