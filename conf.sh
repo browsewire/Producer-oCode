@@ -21,38 +21,54 @@ for issue in issues.json()["items"]:
 mark_deployed() {
   curl -d '{"labels": ["deployed_'$4'"]}' -X POST -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels
   current=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.custom_fields[] | select(.name=="ENV")' | jq '.value'`
-  if [ $4 == "staging" ]
+  ignored_states=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.status.status'`
+  if [ $ignored_states != "in progress" ] && [ $ignored_states != "spec'd ready for developer" ]
   then
-    if [ $current == "0" ] || [ $current == "3" ]
+    if [ $4 == "staging" ]
     then
-      curl -X POST -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"value\": \"6d7714b5-153c-4462-89f8-1a129a615846\" }" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
-    else
-      curl -X POST -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"value\": \"1ca56d76-4094-4d63-ad89-b6b8102a3df4\" }" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
-    fi
-    curl -X PUT -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"status\": \"TESTING/QA\" }" https://api.clickup.com/api/v2/task/$6/
-  elif [ $4 == "develop" ]
-  then
-    if [ $current == "1" ] || [ $current == "3" ]
+      if [ $current == "0" ] || [ $current == "3" ]
+      then
+        curl -X POST -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"value\": \"6d7714b5-153c-4462-89f8-1a129a615846\" }" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
+      else
+        curl -X POST -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"value\": \"1ca56d76-4094-4d63-ad89-b6b8102a3df4\" }" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
+      fi
+      curl -X PUT -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"status\": \"TESTING/QA\" }" https://api.clickup.com/api/v2/task/$6/
+    elif [ $4 == "develop" ]
     then
-      curl -X POST -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"value\": \"6d7714b5-153c-4462-89f8-1a129a615846\" }" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
-    else
-      curl -X POST -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"value\": \"d0dd0c44-c779-4e44-88d2-35dfa4d74075\" }" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
+      if [ $current == "1" ] || [ $current == "3" ]
+      then
+        curl -X POST -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"value\": \"6d7714b5-153c-4462-89f8-1a129a615846\" }" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
+      else
+        curl -X POST -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"value\": \"d0dd0c44-c779-4e44-88d2-35dfa4d74075\" }" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
+      fi
     fi
   fi
 }
 
 rm_deployed() {
-  curl -X DELETE -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels/deployed_$4
-  curl -X DELETE -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
-  curl -X PUT -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"status\": \"DEV COMPLETE PR READY\" }" https://api.clickup.com/api/v2/task/$6/
+  ignored_states=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.status.status'`
+  if [ $ignored_states != "in progress" ] && [ $ignored_states != "spec'd ready for developer" ]
+  then
+    curl -X DELETE -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels/deployed_$4
+    curl -X DELETE -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/field/c7dded3d-36af-4a7a-b9a6-a14496e88fc6/
+    curl -X PUT -H "Authorization: $5" -H "Content-Type: application/json" --data-binary "{ \"status\": \"DEV COMPLETE PR READY\" }" https://api.clickup.com/api/v2/task/$6/
+  fi
 }
 
 mark_conflict() {
-  curl -d '{"labels": ["conflict_'$4'"]}' -X POST -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels
+  ignored_states=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.status.status'`
+  if [ $ignored_states != "in progress" ] && [ $ignored_states != "spec'd ready for developer" ]
+  then
+    curl -d '{"labels": ["conflict_'$4'"]}' -X POST -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels
+  fi
 }
 
 rm_conflict() {
-  curl -X DELETE -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels/conflict_$4
+  ignored_states=`curl -s -X GET -H "Authorization: $5" -H "Content-Type: application/json" https://api.clickup.com/api/v2/task/$6/ | jq '.status.status'`
+  if [ $ignored_states != "in progress" ] && [ $ignored_states != "spec'd ready for developer" ]
+  then
+    curl -X DELETE -H "Authorization: token $2" -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/$1/issues/$3/labels/conflict_$4
+  fi
 }
 
 main_branch=origin/$BRANCH
