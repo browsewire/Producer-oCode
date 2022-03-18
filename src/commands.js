@@ -123,7 +123,7 @@ const addDisplayMessages = function (messages, config = {}) {
     let arrLength = displaymessages.length
     let maxNumber = 2000
     if (arrLength > maxNumber) {
-        displaymessages.splice(arrLength - maxNumber, arrLength)
+        displaymessages.splice(maxNumber - arrLength, arrLength)
     }
 }
 /*
