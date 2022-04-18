@@ -67,6 +67,7 @@ const ports = {
         'collections',
         'diamonds',
         'errors',
+        'favorites',
         'home',
         'learn',
         'misc',
