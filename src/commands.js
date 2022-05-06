@@ -1063,7 +1063,6 @@ const trackExport = function (cmd, addingToStack = false) {
 //all commands pass thru here either from the stack
 //or from commands run without the stack
 const runCommand = async function (jsonObj) {
-    console.log('in runCommand', jsonObj)
     jsonObj = trackExport(jsonObj)
     addDisplayMessages('Running command:\n' + JSON.stringify(jsonObj, null, 4))
     let cmdMessages = await commands[jsonObj.cmd](jsonObj)
@@ -1071,7 +1070,6 @@ const runCommand = async function (jsonObj) {
 }
 
 const processStoredCommand = async function (jsonObj) {
-    console.log('jsonObj',jsonObj);
     let messages = []
     jsonObj = JSON.parse(jsonObj)
     /* 
@@ -1103,9 +1101,7 @@ const processStoredCommand = async function (jsonObj) {
         typeof jsonObj.page != 'undefined' &&
         typeof jsonObj.totalPages != 'undefined'
     ) {
-        console.log('first test passed')
         if (typeof storedCommands[jsonObj.siteId] != 'undefined') {
-            console.log('second test passed')
             if (storedCommands[jsonObj.siteId].key != jsonObj.key) {
                 storedCommands[jsonObj.siteId].key = jsonObj.key
                 storedCommands[jsonObj.siteId].data = jsonObj.data
