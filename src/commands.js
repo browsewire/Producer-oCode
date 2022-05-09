@@ -1230,6 +1230,8 @@ const processStoredCommand = async function (jsonObj) {
                     // let cmdMessages = await commands[jsonObj.cmd](jsonObj)
                     // addDisplayMessages(cmdMessages)
                     await runCommand(jsonObj)
+                    //unset the key for single commands when done
+                    storedCommands[jsonObj.siteId].key = ''
                 }
             }
         }
