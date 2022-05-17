@@ -269,6 +269,13 @@ body
                 a(href='?task=' + ports.faVarnishApiJson) Flush FA API VarnishCache
 
             .control-group
+                h2 Elder Container Down
+                p Send Elder Container Down Command. Send a command to tell the Elder container to shut down. These containers should only be on during an export or in dev mode. But if there is an export problem may inadvertantly stay on.
+                a(href='?task=' + ports.dnDownJson) Send DN Container Down Signal
+                a(href='?task=' + ports.tfDownJson) Send TF Container Down Signal
+                a(href='?task=' + ports.faDownJson) Send FA Container Down Signal
+
+            .control-group
                 h2 Add A Display Message
                 form(action="/" method="GET")
                     input(type="text" name="displaymessage" placeholder="Put Your Message Here")

@@ -191,6 +191,33 @@ const ports = {
         totalPages: 1,
         data: ['/'],
     }),
+    dnDownJson: JSON.stringify({
+        siteId: 'dn',
+        cmd: 'container',
+        containerCmd: 'down',
+        key: 'dnDown' + makeId(10),
+        page: 1,
+        totalPages: 1,
+        data: [],
+    }),
+    tfDownJson: JSON.stringify({
+        siteId: 'tf',
+        cmd: 'container',
+        containerCmd: 'down',
+        key: 'tfDown' + makeId(10),
+        page: 1,
+        totalPages: 1,
+        data: [],
+    }),
+    faDownJson: JSON.stringify({
+        siteId: 'fa',
+        cmd: 'container',
+        containerCmd: 'down',
+        key: 'faDown' + makeId(10),
+        page: 1,
+        totalPages: 1,
+        data: [],
+    }),
 }
 
 /* we are using pug template engine to render the producer landing page */
@@ -402,13 +429,29 @@ app.get('/', async (req, res) => {
                     JSON.stringify({
                         siteId: generatedJsonTask.siteId,
                         cmd: 'container',
+                        containerCmd: 'down',
+                        key: 'keyContainerDown' + makeId(10),
+                        page: 1,
+                        totalPages: 1,
+                        stackKey: stackKey,
+                        stackPage: 1,
+                        stackTotalPages: 4,
+                        data: [],
+                    })
+                )
+
+                //start up the container for dev, staging & prod
+                processStoredCommand(
+                    JSON.stringify({
+                        siteId: generatedJsonTask.siteId,
+                        cmd: 'container',
                         containerCmd: 'up',
                         key: 'keyContainer' + makeId(10),
                         page: 1,
                         totalPages: 1,
                         stackKey: stackKey,
-                        stackPage: 1,
-                        stackTotalPages: 3,
+                        stackPage: 2,
+                        stackTotalPages: 4,
                         data: [],
                     })
                 )
@@ -422,16 +465,16 @@ app.get('/', async (req, res) => {
                         page: 1,
                         totalPages: 1,
                         stackKey: stackKey,
-                        stackPage: 2,
-                        stackTotalPages: 3,
+                        stackPage: 3,
+                        stackTotalPages: 4,
                         data: ['/graphql*', '/graphql/*'],
                     })
                 )
 
                 //modify the current task to go onto the stack
                 generatedJsonTask.stackKey = stackKey
-                generatedJsonTask.stackPage = 3
-                generatedJsonTask.stackTotalPages = 3
+                generatedJsonTask.stackPage = 4
+                generatedJsonTask.stackTotalPages = 4
             }
 
             //run the command
