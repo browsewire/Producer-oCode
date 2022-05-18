@@ -47,7 +47,10 @@ let mag_url =
           '-admin' +
           '.diamondnexus.com' +
           '/MissScarletWrenchKitchen/'
-        : 'https://' + process.env.MAG_NAME + '.1215diamonds.com' + '/hive/'
+        : 'https://' +
+        process.env.MAG_NAME +
+        '-admin' +
+        '.diamondnexus.com' + '/hive/'
 const ports = {
     fa: process.env.PORT_FA,
     fa_serve: process.env.PORT_SERVE_FA,
