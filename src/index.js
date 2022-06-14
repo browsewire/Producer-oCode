@@ -221,6 +221,8 @@ const ports = {
         totalPages: 1,
         data: [],
     }),
+    indexer_status: null,
+    active_sale_rules: []
 }
 
 /* we are using pug template engine to render the producer landing page */
@@ -260,6 +262,22 @@ app.get('/', async (req, res) => {
             }
             addDisplayMessages(message, config)
         }
+
+        //the producer receives status updates from 
+        //the wordpress cron job that checks
+        //magento indexer and sale rules
+        if (req.query.status) {
+            if( isJson(req.query.status) ) {
+                const status = JSON.parse(req.query.status);
+                if( typeof status.indexer_status != 'undefined'){
+                    ports.indexer_status = status.indexer_status;
+                }
+                if( typeof status.active_sale_rules != 'undefined' ){
+                    ports.active_sale_rules = status.active_sale_rules
+                }
+            }
+        }
+
         //if this is a task, check if it's parsable json or not,
         //if not then make it into a standard format json object
         if (req.query.task) {

@@ -179,6 +179,13 @@ style.
     [data-exportid]:hover{
         background-color:gray;
     }
+    .active_sale_rules{
+        border:1px solid black;
+        min-height:1em;
+        max-height:8em;
+        overflow:auto;
+        width:100%;
+    }
 
 body
     .control-group-wrap
@@ -230,6 +237,22 @@ body
                                 input#path(type='text' name='list')
                                 div.remove X
                     input(type='submit' value="Run Export")
+
+            .control-group
+                if ports.indexer_status != null
+                    h2 Indexer Status
+                    if ports.indexer_status
+                        p Magento Indexes are Green 
+                    else
+                        p Magento Indexes are Red
+                    h2 Active Sale Rules
+                    ul.active_sale_rules
+                        each sale_rule in ports.active_sale_rules
+                            li
+                                p=sale_rule.rule + ' -- ' + sale_rule.id + ' -- ' + sale_rule.websites.join(',')
+                else
+                    h2 Waiting to receive Magento status information ...
+
 
             .control-group 
                 h2 Dev
@@ -383,11 +406,17 @@ script.
     }
 
     let sidebar = document.querySelector(".messages");
+    let rulesbar = document.querySelector(".active_sale_rules");
+
     let topScroll = localStorage.getItem("messages-scroll");
     if (topScroll !== null) {
         sidebar.scrollTop = parseInt(topScroll, 10);
     }
-
+    let rulesScroll = localStorage.getItem("rulesbar-scroll");
+    if (rulesScroll !== null) {
+        rulesbar.scrollTop = parseInt(rulesScroll, 10);
+    }
+    
     //uncheck the routes boxes when you switch sites
     let siteIdButtons = document.querySelectorAll('[name="site"]')
     if( siteIdButtons ){
@@ -508,6 +537,8 @@ script.
     
     window.addEventListener("beforeunload", () => {
         localStorage.setItem("messages-scroll", sidebar.scrollTop);
+        localStorage.setItem("rulesbar-scroll", rulesbar.scrollTop);
+
         selectIds.forEach( (id) => {
             let boxes = document.querySelectorAll('[name="' + id + '"]:checked')
             if( boxes ){
