@@ -269,6 +269,7 @@ app.get('/', async (req, res) => {
         if (req.query.status) {
             if( isJson(req.query.status) ) {
                 const status = JSON.parse(req.query.status);
+                console.log('status', status);
                 if( typeof status.indexer_status != 'undefined'){
                     ports.indexer_status = status.indexer_status;
                 }

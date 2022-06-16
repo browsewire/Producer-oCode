@@ -185,6 +185,7 @@ style.
         max-height:8em;
         overflow:auto;
         width:100%;
+        list-style-type:decimal;
     }
 
 body
@@ -242,9 +243,9 @@ body
                 if ports.indexer_status != null
                     h2 Indexer Status
                     if ports.indexer_status
-                        p Magento Indexes are Green 
+                        p Magento Indexes are Green, it is safe to export.
                     else
-                        p Magento Indexes are Red
+                        p Magento Indexes are Red, please wait to export.
                     h2 Active Sale Rules
                     ul.active_sale_rules
                         each sale_rule in ports.active_sale_rules
@@ -413,7 +414,7 @@ script.
         sidebar.scrollTop = parseInt(topScroll, 10);
     }
     let rulesScroll = localStorage.getItem("rulesbar-scroll");
-    if (rulesScroll !== null) {
+    if (rulesScroll !== null && rulesbar) {
         rulesbar.scrollTop = parseInt(rulesScroll, 10);
     }
     
@@ -537,7 +538,11 @@ script.
     
     window.addEventListener("beforeunload", () => {
         localStorage.setItem("messages-scroll", sidebar.scrollTop);
-        localStorage.setItem("rulesbar-scroll", rulesbar.scrollTop);
+        if( rulesbar ){
+            localStorage.setItem("rulesbar-scroll", rulesbar.scrollTop);
+        } else{
+            localStorage.setItem("rulesbar-scroll", 0);
+        }
 
         selectIds.forEach( (id) => {
             let boxes = document.querySelectorAll('[name="' + id + '"]:checked')
