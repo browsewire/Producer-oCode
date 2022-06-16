@@ -270,6 +270,12 @@ app.get('/', async (req, res) => {
             if( isJson(req.query.status) ) {
                 const status = JSON.parse(req.query.status);
                 console.log('status', status);
+                if( typeof status.time != 'undefined'){
+                    let utcSeconds =  status.time;
+                    let d = new Date(0); // The 0 there is the key, which sets the date to the epoch
+                    d.setUTCSeconds(utcSeconds); 
+                    ports.status_time = d.toLocaleString('en-US',{ timeZone: 'America/Chicago' });
+                }
                 if( typeof status.indexer_status != 'undefined'){
                     ports.indexer_status = status.indexer_status;
                 }

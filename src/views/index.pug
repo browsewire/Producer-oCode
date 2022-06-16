@@ -241,9 +241,9 @@ body
 
             .control-group
                 if ports.indexer_status != null
-                    h2 Indexer Status
+                    h2='Indexer Status as of ' + ports.status_time
                     if ports.indexer_status
-                        p Magento Indexes are Green, it is safe to export.
+                        p Magento Indexes are Green.
                     else
                         p Magento Indexes are Red, please wait to export.
                     h2 Active Sale Rules
