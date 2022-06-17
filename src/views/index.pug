@@ -247,10 +247,11 @@ body
                     else
                         p Magento Indexes are Red, please wait to export.
                     h2 Active Sale Rules
-                    ul.active_sale_rules
-                        each sale_rule in ports.active_sale_rules
-                            li
-                                p=sale_rule.rule + ' -- ' + sale_rule.id + ' -- ' + sale_rule.websites.join(',')
+                    if typeof ports.active_sale_rules != 'undefined' && ports.active_sale_rules
+                        ul.active_sale_rules
+                            each sale_rule in ports.active_sale_rules
+                                li
+                                    p=sale_rule.rule + ' -- ' + sale_rule.id + ' -- ' + sale_rule.websites.join(',')
                 else
                     h2 Waiting to receive Magento status information ...
 
