@@ -266,6 +266,48 @@ const sleep = async function (ms) {
     Commands that are run by the processStoredCommands
 */
 const commands = {
+    moveWordpressDB: async function ( config) {
+        let messages = [];
+        addDisplayMessages('Attempting to copy Wordpress DB from staging to live and dev.');
+        /*
+            Starts the right codebuild
+            aws --region us-east-1 --profile codebuild codebuild start-build --project-name mag2-dev-wp-db-elder-CodeBuild | jq .build.id | sed 's/"//g'
+            And this will tell you if it's complete
+            aws --region us-east-1 --profile codebuild codebuild batch-get-builds --ids $build_id | jq .builds[].buildComplete
+        */
+        
+        const moveCmd = `aws --region us-east-1 codebuild start-build --project-name mag2-dev-wp-db-elder-CodeBuild | jq .build.id | sed 's/"//g'`;
+ 
+        let execMessages = await execFunction(moveCmd);
+        console.log('execMessages from wordpress db copy', execMessages)
+        messages = messages.concat(execMessages.messages);
+
+        if( typeof execMessages.stdout != 'undefined' && execMessages.stdout.length > 0){
+            let build_id = execMessages.stdout.replace(/(\r\n|\n|\r)/gm, "");
+            const checkCmd = `aws --region us-east-1 codebuild batch-get-builds --ids ${build_id} | jq .builds[].buildComplete`;
+            const maxAttempts = 10;
+            let attempts = 0;
+            let success = false;
+            while( !success && attempts <= maxAttempts){
+                attempts++;
+                //wait 10 seconds 
+                addDisplayMessages('Waiting for Wordpress DB to Copy');
+                await sleep(10000);
+                let checkMessages = await execFunction(checkCmd);
+                console.log('checkMessages from wordpress db copy', checkMessages);
+                if( typeof checkMessages.stdout != 'undefined' && checkMessages.stdout.indexOf('true') != -1 ){
+                    console.log('db update check returned true')
+                    success = true;
+                }
+            }
+            if( success ){
+                return ['Wordpress DB copied from staging to dev and production.']
+            }else{
+                return ['Wordpress DB copy timed out. DB may not have copied.']
+            }
+        }
+        return ['Wordpress DB not copied, there was a problem getting the build id.']
+    },
     flushcomplete: async function (config) {
         //just a function to capture the completed flush
         return [
