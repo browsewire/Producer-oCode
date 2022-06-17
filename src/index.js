@@ -221,6 +221,14 @@ const ports = {
         totalPages: 1,
         data: [],
     }),
+    moveWordpressDB: JSON.stringify({
+        siteId: 'dn',
+        cmd: 'moveWordpressDB',
+        key: 'moveWordpressDB' + makeId(10),
+        page: 1,
+        totalPages: 1,
+        data: [],
+    }),
     indexer_status: null,
     active_sale_rules: []
 }
