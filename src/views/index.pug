@@ -187,6 +187,11 @@ style.
         width:100%;
         list-style-type:decimal;
     }
+    a.copy_db{
+        color:red;
+        border:2px solid red;
+        padding: 8px;
+    }
 
 body
     .control-group-wrap
@@ -387,6 +392,10 @@ body
                                     p="Routes: " + val.incrementalBuildConfig.routes
                                 hr
                 br
+            .control-group 
+                h2 Copy Staging Wordpress DB to live and dev.
+                p This will copy the Wordpress DB over.
+                a.copy_db(href='?task=' + ports.moveWordpressDB) Copy Over the Wordpress DB
                                 
 
 script.
