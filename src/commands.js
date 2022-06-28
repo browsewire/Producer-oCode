@@ -218,7 +218,7 @@ messages
 const execFunction = async function (execString) {
     let messages = []
     try {
-        let { stdout, stderr, error } = await exec(execString)
+        let { stdout, stderr, error } = await exec(execString, {maxBuffer: 1024 * 500})
         if (error) {
             messages.push(
                 `bash command:\n${execString}\nerror: ${error.message}`
