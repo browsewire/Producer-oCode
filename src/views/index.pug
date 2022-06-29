@@ -15,6 +15,7 @@
 - var export_status = export_status
 - var sites = ['dn','tf','fa']
 - var dbTaskStr = ports.moveWordpressDB
+- var whichEnv = ports.whichEnv
 
 
 doctype html
@@ -393,11 +394,12 @@ body
                                     p="Routes: " + val.incrementalBuildConfig.routes
                                 hr
                 br
-            .control-group 
-                h2 Copy Staging Wordpress DB to live and dev.
-                p This will copy the Wordpress DB over.
-                button(onclick='confirmDBReload()' class="copy_db") Copy Over the Wordpress DB
-                p#reload_db_text
+            if whichEnv != 'local'
+                .control-group 
+                    h2 Copy Staging Wordpress DB to live and dev.
+                    p This will copy the Staging Wordpress DB over to the m2-dev site and to production.
+                    button(onclick='confirmDBReload()' class="copy_db") Copy Over the Wordpress DB
+                    p#reload_db_text
                                 
 
 script.
