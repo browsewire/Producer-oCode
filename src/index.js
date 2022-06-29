@@ -10,6 +10,7 @@ const {
     isJson,
     addDisplayMessages,
     makeId,
+    findWhichEnv
 } = require('./commands')
 // const producer = require('./broker')
 
@@ -229,6 +230,7 @@ const ports = {
         totalPages: 1,
         data: [],
     }),
+    whichEnv: findWhichEnv(),
     indexer_status: null,
     active_sale_rules: []
 }
