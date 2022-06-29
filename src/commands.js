@@ -285,11 +285,7 @@ const commands = {
         if( typeof execMessages.stdout != 'undefined' && execMessages.stdout.length > 0){
             let build_id = execMessages.stdout.replace(/(\r\n|\n|\r)/gm, "");
             const checkCmd = `aws --region us-east-1 codebuild batch-get-builds --ids ${build_id} | jq .builds[].buildComplete`;
-<<<<<<< HEAD
             const maxAttempts = 20;
-=======
-            const maxAttempts = 10;
->>>>>>> ad8480a0a192c38df2c10d28cdcd354ca2a0844c
             let attempts = 0;
             let success = false;
             while( !success && attempts <= maxAttempts){
