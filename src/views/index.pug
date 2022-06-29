@@ -14,6 +14,7 @@
 - var displaymessages = displaymessages
 - var export_status = export_status
 - var sites = ['dn','tf','fa']
+- var dbTaskStr = ports.moveWordpressDB
 
 
 doctype html
@@ -392,13 +393,15 @@ body
                                     p="Routes: " + val.incrementalBuildConfig.routes
                                 hr
                 br
-            //- .control-group 
-            //-     h2 Copy Staging Wordpress DB to live and dev.
-            //-     p This will copy the Wordpress DB over.
-            //-     a.copy_db(href='?task=' + ports.moveWordpressDB) Copy Over the Wordpress DB
+            .control-group 
+                h2 Copy Staging Wordpress DB to live and dev.
+                p This will copy the Wordpress DB over.
+                button(onclick='confirmDBReload()' class="copy_db") Copy Over the Wordpress DB
+                p#reload_db_text
                                 
 
 script.
+    let dbTaskStr='!{dbTaskStr}';
     // make completed exports and flushed exports clickable to scroll to errors in the message window
     let exportIdButtons = document.querySelectorAll('[data-exportid]')
     if( exportIdButtons ){
@@ -566,6 +569,18 @@ script.
         })
        
     });
+
+    //copy over db confirm button
+    const confirmDBReload = function () {
+        if (confirm("Are you sure you want to copy the staging Wordpress db over to the dev and production sites!") == true) {
+            document.getElementById("reload_db_text").innerHTML = "Reloading Wordpress DB!";
+            if ('URLSearchParams' in window) {
+                var searchParams = new URLSearchParams(window.location.search);
+                searchParams.set("task", dbTaskStr);
+                window.location.search = searchParams.toString();
+            }
+        } 
+    }
     setTimeout(function(){
         location.reload()
     },20000)
