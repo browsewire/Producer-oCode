@@ -218,7 +218,7 @@ messages
 const execFunction = async function (execString) {
     let messages = []
     try {
-        let { stdout, stderr, error } = await exec(execString, {maxBuffer: 1024 * 500})
+        let { stdout, stderr, error } = await exec(execString, {maxBuffer: 1024 * 2048})
         if (error) {
             messages.push(
                 `bash command:\n${execString}\nerror: ${error.message}`
@@ -285,7 +285,7 @@ const commands = {
         if( typeof execMessages.stdout != 'undefined' && execMessages.stdout.length > 0){
             let build_id = execMessages.stdout.replace(/(\r\n|\n|\r)/gm, "");
             const checkCmd = `aws --region us-east-1 codebuild batch-get-builds --ids ${build_id} | jq .builds[].buildComplete`;
-            const maxAttempts = 10;
+            const maxAttempts = 20;
             let attempts = 0;
             let success = false;
             while( !success && attempts <= maxAttempts){
