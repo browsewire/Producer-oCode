@@ -10,6 +10,7 @@ const {
     isJson,
     addDisplayMessages,
     makeId,
+    findWhichEnv
 } = require('./commands')
 // const producer = require('./broker')
 
@@ -221,6 +222,17 @@ const ports = {
         totalPages: 1,
         data: [],
     }),
+    moveWordpressDB: JSON.stringify({
+        siteId: 'dn',
+        cmd: 'moveWordpressDB',
+        key: 'moveWordpressDB' + makeId(10),
+        page: 1,
+        totalPages: 1,
+        data: [],
+    }),
+    whichEnv: findWhichEnv(),
+    indexer_status: null,
+    active_sale_rules: []
 }
 
 /* we are using pug template engine to render the producer landing page */
@@ -260,6 +272,29 @@ app.get('/', async (req, res) => {
             }
             addDisplayMessages(message, config)
         }
+
+        //the producer receives status updates from 
+        //the wordpress cron job that checks
+        //magento indexer and sale rules
+        if (req.query.status) {
+            if( isJson(req.query.status) ) {
+                const status = JSON.parse(req.query.status);
+                console.log('status', status);
+                if( typeof status.time != 'undefined'){
+                    let utcSeconds =  status.time;
+                    let d = new Date(0); // The 0 there is the key, which sets the date to the epoch
+                    d.setUTCSeconds(utcSeconds); 
+                    ports.status_time = d.toLocaleString('en-US',{ timeZone: 'America/Chicago' });
+                }
+                if( typeof status.indexer_status != 'undefined'){
+                    ports.indexer_status = status.indexer_status;
+                }
+                if( typeof status.active_sale_rules != 'undefined' ){
+                    ports.active_sale_rules = status.active_sale_rules
+                }
+            }
+        }
+
         //if this is a task, check if it's parsable json or not,
         //if not then make it into a standard format json object
         if (req.query.task) {
