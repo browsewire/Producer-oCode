@@ -276,7 +276,7 @@ const commands = {
             aws --region us-east-1 --profile codebuild codebuild batch-get-builds --ids $build_id | jq .builds[].buildComplete
         */
         
-        const moveCmd = `aws --region us-east-1 codebuild start-build --project-name mag2-dev-wp-db-elder-CodeBuild | jq .build.id | sed 's/"//g'`;
+        const moveCmd = `aws --region us-east-1 codebuild start-build --project-name mag2-prod-wp-db-elder-CodeBuild | jq .build.id | sed 's/"//g'`;
  
         let execMessages = await execFunction(moveCmd);
         console.log('execMessages from wordpress db copy', execMessages)

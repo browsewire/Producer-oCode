@@ -394,7 +394,7 @@ body
                                     p="Routes: " + val.incrementalBuildConfig.routes
                                 hr
                 br
-            if whichEnv != 'local'
+            if whichEnv == 'prod'
                 .control-group 
                     h2 Copy Staging Wordpress DB to live and dev.
                     p This will copy the Staging Wordpress DB over to the m2-dev site and to production.
