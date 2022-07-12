@@ -315,6 +315,7 @@ const commands = {
         ]
     },
     buildcomplete: async function (config) {
+        console.log('buildcomplete config', config);
         //let whichEnv = findWhichEnv()
         let totalStackPages = 3
         let currentStackPage = 1
@@ -698,6 +699,8 @@ const commands = {
                 execMessages = await execFunction(checkcmd)
                 console.log('while loop execMessages', execMessages)
                 cacheResponseJson = JSON.parse(execMessages.stdout)
+                addDisplayMessages('Invalidation check message');
+                addDisplayMessages( JSON.stringify(cacheResponseJson, null, 4) );
                 status = cacheResponseJson.Invalidation.Status
                 messages = messages.concat(execMessages.messages)
                 if (execMessages.error != undefined) {
@@ -776,11 +779,15 @@ const commands = {
         messages = messages.concat(logMsgs)
         let distributionId = awsDistributions[siteId][whichEnv]
         let invalidationId = ''
-        let time = Date.now()
         let items = config.data
         let quantity = config.data.length
+        // let fileListId = MurmurHash3(JSON.stringify(items))
+        // let callerReference =
+        //     'producer__' + whichEnv + '__' + config.siteId + '__' + fileListId
+        let time = Date.now()
         let callerReference =
             'producer__' + whichEnv + '__' + config.siteId + '__' + time
+        
         let fileName = callerReference + '.txt'
         let flushApi = false
         let flushOther = false
@@ -834,6 +841,7 @@ const commands = {
 
             await fs.writeFile(fullFilePath, content, 'utf8')
             await fs.chmod(fullFilePath, 0o775)
+            addDisplayMessages('aws clear file content: ' + content);
 
             let execMessages = {}
             execMessages = await execFunction('cat ' + fullFilePath)
@@ -843,6 +851,7 @@ const commands = {
                 distributionId +
                 ' --invalidation-batch file://' +
                 fullFilePath
+            addDisplayMessages('aws clear command: ' + clearcmd);
             execMessages = await execFunction(clearcmd)
             console.log('execMessages after create-invalidation', execMessages)
             if (typeof execMessages.error != 'undefined') {
@@ -937,14 +946,14 @@ const commands = {
 
         if (flushApi) {
             execMessages = await commands.cacheclear({
-                data: ['/*', '/'],
+                data: ['/*'],
                 siteId: 'api',
             })
             messages = messages.concat(execMessages)
         }
         if (flushOther) {
             execMessages = await commands.cacheclear({
-                data: ['/*', '/'],
+                data: ['/*'],
                 siteId: 'other',
             })
             messages = messages.concat(execMessages)
