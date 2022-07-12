@@ -279,7 +279,7 @@ app.get('/', async (req, res) => {
         if (req.query.status) {
             if( isJson(req.query.status) ) {
                 const status = JSON.parse(req.query.status);
-                console.log('status', status);
+                // console.log('status', status);
                 if( typeof status.time != 'undefined'){
                     let utcSeconds =  status.time;
                     let d = new Date(0); // The 0 there is the key, which sets the date to the epoch
