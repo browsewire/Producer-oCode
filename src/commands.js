@@ -870,6 +870,7 @@ const commands = {
                     cacheAttempts++;
                     addDisplayMessages('Aws cache flush error, trying again. Attempt: ' + cacheAttempts)
                     addDisplayMessages(execMessages.messages)
+                    await sleep(5000)
                     execMessages = await execFunction(clearcmd)
                 }
                 if( cacheAttempts == cacheMaxAttempts || typeof execMessages.error != 'undefined'){
