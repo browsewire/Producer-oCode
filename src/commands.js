@@ -859,11 +859,26 @@ const commands = {
                     'error in create-invalidation',
                     execMessages.messages
                 )
-                //messages = messages.concat(execMessages.messages)
-                messages = messages.concat([
-                    'There was an error in create-invalidation while trying to flush aws.',
-                ])
-                return messages
+                let cacheMaxAttempts = 10;
+                let cacheAttempts = 0;
+                //sometimes the aws create invalidation just fails, so we'll try again
+                /*
+                    Here's the message:
+                    An error occurred (ServiceUnavailable) when calling the CreateInvalidation operation (reached max retries: 2): CloudFront encountered an internal error. Please try again.
+                */
+                while(execMessages.messages.indexOf('try again') && cacheAttempts < cacheMaxAttempts){
+                    cacheAttempts++;
+                    addDisplayMessages('Aws cache flush error, trying again. Attempt: ' + cacheAttempts)
+                    addDisplayMessages(execMessages.messages)
+                    execMessages = await execFunction(clearcmd)
+                }
+                if( cacheAttempts == cacheMaxAttempts || typeof execMessages.error != 'undefined'){
+                    messages = messages.concat(execMessages.messages)
+                    messages = messages.concat([
+                        'There was an error in create-invalidation while trying to flush aws.',
+                    ])
+                    return messages
+                }
             }
             if (isJson(execMessages.stdout)) {
                 let cacheResponseJson = JSON.parse(execMessages.stdout)
