@@ -338,15 +338,15 @@ const commands = {
         processStoredCommand(JSON.stringify(cacheClearCmd))
         currentStackPage++
 
-        if (dblTapFlush) {
-            addDisplayMessages('DOUBLE TAP FLUSH')
-            let cacheClearCmd2 = cacheClearCmd
-            cacheClearCmd2.key = cacheClearCmd2.key + 'x2'
-            cacheClearCmd2.stackKey = cacheClearCmd2.stackKey
-            cacheClearCmd2.stackPage = currentStackPage
-            processStoredCommand(JSON.stringify(cacheClearCmd2))
-            currentStackPage++
-        }
+        // if (dblTapFlush) {
+        //     addDisplayMessages('DOUBLE TAP FLUSH')
+        //     let cacheClearCmd2 = cacheClearCmd
+        //     cacheClearCmd2.key = cacheClearCmd2.key + 'x2'
+        //     cacheClearCmd2.stackKey = cacheClearCmd2.stackKey
+        //     cacheClearCmd2.stackPage = currentStackPage
+        //     processStoredCommand(JSON.stringify(cacheClearCmd2))
+        //     currentStackPage++
+        // }
 
         let containerCmd = {
             siteId: config.siteId,
