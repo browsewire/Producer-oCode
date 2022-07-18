@@ -315,14 +315,15 @@ const commands = {
         ]
     },
     buildcomplete: async function (config) {
+        console.log('buildcomplete config', config);
         //let whichEnv = findWhichEnv()
         let totalStackPages = 3
         let currentStackPage = 1
-        let dblTapFlush = false
-        //if (whichEnv === 'stage' || whichEnv === 'prod') {
-        dblTapFlush = true
-        totalStackPages = 4
-        //}
+        // let dblTapFlush = false
+        // //if (whichEnv === 'stage' || whichEnv === 'prod') {
+        // dblTapFlush = true
+        // totalStackPages = 4
+        // //}
 
         let stackKey = 'bc' + config.siteId + makeId(10)
 
@@ -337,15 +338,15 @@ const commands = {
         processStoredCommand(JSON.stringify(cacheClearCmd))
         currentStackPage++
 
-        if (dblTapFlush) {
-            addDisplayMessages('DOUBLE TAP FLUSH')
-            let cacheClearCmd2 = cacheClearCmd
-            cacheClearCmd2.key = cacheClearCmd2.key + 'x2'
-            cacheClearCmd2.stackKey = cacheClearCmd2.stackKey
-            cacheClearCmd2.stackPage = currentStackPage
-            processStoredCommand(JSON.stringify(cacheClearCmd2))
-            currentStackPage++
-        }
+        // if (dblTapFlush) {
+        //     addDisplayMessages('DOUBLE TAP FLUSH')
+        //     let cacheClearCmd2 = cacheClearCmd
+        //     cacheClearCmd2.key = cacheClearCmd2.key + 'x2'
+        //     cacheClearCmd2.stackKey = cacheClearCmd2.stackKey
+        //     cacheClearCmd2.stackPage = currentStackPage
+        //     processStoredCommand(JSON.stringify(cacheClearCmd2))
+        //     currentStackPage++
+        // }
 
         let containerCmd = {
             siteId: config.siteId,
@@ -698,6 +699,8 @@ const commands = {
                 execMessages = await execFunction(checkcmd)
                 console.log('while loop execMessages', execMessages)
                 cacheResponseJson = JSON.parse(execMessages.stdout)
+                addDisplayMessages('Invalidation check message');
+                addDisplayMessages( JSON.stringify(cacheResponseJson, null, 4) );
                 status = cacheResponseJson.Invalidation.Status
                 messages = messages.concat(execMessages.messages)
                 if (execMessages.error != undefined) {
@@ -776,11 +779,15 @@ const commands = {
         messages = messages.concat(logMsgs)
         let distributionId = awsDistributions[siteId][whichEnv]
         let invalidationId = ''
-        let time = Date.now()
         let items = config.data
         let quantity = config.data.length
+        // let fileListId = MurmurHash3(JSON.stringify(items))
+        // let callerReference =
+        //     'producer__' + whichEnv + '__' + config.siteId + '__' + fileListId
+        let time = Date.now()
         let callerReference =
             'producer__' + whichEnv + '__' + config.siteId + '__' + time
+        
         let fileName = callerReference + '.txt'
         let flushApi = false
         let flushOther = false
@@ -834,6 +841,7 @@ const commands = {
 
             await fs.writeFile(fullFilePath, content, 'utf8')
             await fs.chmod(fullFilePath, 0o775)
+            addDisplayMessages('aws clear file content: ' + content);
 
             let execMessages = {}
             execMessages = await execFunction('cat ' + fullFilePath)
@@ -843,6 +851,7 @@ const commands = {
                 distributionId +
                 ' --invalidation-batch file://' +
                 fullFilePath
+            addDisplayMessages('aws clear command: ' + clearcmd);
             execMessages = await execFunction(clearcmd)
             console.log('execMessages after create-invalidation', execMessages)
             if (typeof execMessages.error != 'undefined') {
@@ -850,11 +859,27 @@ const commands = {
                     'error in create-invalidation',
                     execMessages.messages
                 )
-                //messages = messages.concat(execMessages.messages)
-                messages = messages.concat([
-                    'There was an error in create-invalidation while trying to flush aws.',
-                ])
-                return messages
+                let cacheMaxAttempts = 10;
+                let cacheAttempts = 0;
+                //sometimes the aws create invalidation just fails, so we'll try again
+                /*
+                    Here's the message:
+                    An error occurred (ServiceUnavailable) when calling the CreateInvalidation operation (reached max retries: 2): CloudFront encountered an internal error. Please try again.
+                */
+                while(execMessages.messages.indexOf('try again') && cacheAttempts < cacheMaxAttempts){
+                    cacheAttempts++;
+                    addDisplayMessages('Aws cache flush error, trying again. Attempt: ' + cacheAttempts)
+                    addDisplayMessages(execMessages.messages)
+                    await sleep(5000)
+                    execMessages = await execFunction(clearcmd)
+                }
+                if( cacheAttempts == cacheMaxAttempts || typeof execMessages.error != 'undefined'){
+                    messages = messages.concat(execMessages.messages)
+                    messages = messages.concat([
+                        'There was an error in create-invalidation while trying to flush aws.',
+                    ])
+                    return messages
+                }
             }
             if (isJson(execMessages.stdout)) {
                 let cacheResponseJson = JSON.parse(execMessages.stdout)
@@ -937,14 +962,14 @@ const commands = {
 
         if (flushApi) {
             execMessages = await commands.cacheclear({
-                data: ['/*', '/'],
+                data: ['/*'],
                 siteId: 'api',
             })
             messages = messages.concat(execMessages)
         }
         if (flushOther) {
             execMessages = await commands.cacheclear({
-                data: ['/*', '/'],
+                data: ['/*'],
                 siteId: 'other',
             })
             messages = messages.concat(execMessages)

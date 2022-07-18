@@ -86,7 +86,7 @@ const ports = {
         key: 'key' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: ['/*', '/'],
+        data: ['/*'],
     }),
     otherFlushJson: JSON.stringify({
         siteId: 'other',
@@ -94,7 +94,7 @@ const ports = {
         key: 'key' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: ['/*', '/'],
+        data: ['/*'],
     }),
     dnFlushJson: JSON.stringify({
         siteId: 'dn',
@@ -102,7 +102,7 @@ const ports = {
         key: 'key' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: ['/*', '/'],
+        data: ['/*'],
     }),
     tfFlushJson: JSON.stringify({
         siteId: 'tf',
@@ -110,7 +110,7 @@ const ports = {
         key: 'key' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: ['/*', '/'],
+        data: ['/*'],
     }),
     faFlushJson: JSON.stringify({
         siteId: 'fa',
@@ -118,7 +118,7 @@ const ports = {
         key: 'key' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: ['/*', '/'],
+        data: ['/*'],
     }),
     dnFlushGqlJson: JSON.stringify({
         siteId: 'dn',
@@ -126,7 +126,7 @@ const ports = {
         key: 'key' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: ['/graphql*', '/graphql/*'],
+        data: ['/graphql*'],
     }),
     tfFlushGqlJson: JSON.stringify({
         siteId: 'tf',
@@ -134,7 +134,7 @@ const ports = {
         key: 'key' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: ['/graphql*', '/graphql/*'],
+        data: ['/graphql*'],
     }),
     faFlushGqlJson: JSON.stringify({
         siteId: 'fa',
@@ -142,7 +142,7 @@ const ports = {
         key: 'key' + Math.random(),
         page: 1,
         totalPages: 1,
-        data: ['/graphql*', '/graphql/*'],
+        data: ['/graphql*'],
     }),
     dnVarnishJson: JSON.stringify({
         siteId: 'dn',
@@ -505,7 +505,7 @@ app.get('/', async (req, res) => {
                         stackKey: stackKey,
                         stackPage: 3,
                         stackTotalPages: 4,
-                        data: ['/graphql*', '/graphql/*'],
+                        data: ['/graphql*'],
                     })
                 )
 
