@@ -866,7 +866,7 @@ const commands = {
                     Here's the message:
                     An error occurred (ServiceUnavailable) when calling the CreateInvalidation operation (reached max retries: 2): CloudFront encountered an internal error. Please try again.
                 */
-                while(execMessages.messages.indexOf('try again') && cacheAttempts < cacheMaxAttempts){
+                while(execMessages.messages.indexOf('try again') != -1 && cacheAttempts < cacheMaxAttempts){
                     cacheAttempts++;
                     addDisplayMessages('Aws cache flush error, trying again. Attempt: ' + cacheAttempts)
                     addDisplayMessages(execMessages.messages)
