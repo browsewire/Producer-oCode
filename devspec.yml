@@ -22,7 +22,7 @@ phases:
       - export task="$Taskid"
       - export accountId="$account"
       - export snstopic="$sns"
-      - $(aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email)
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --password-stdin --username AWS $REPOURL
       - IMAGE_TAG=build-$(git rev-parse HEAD)
   build:
     commands:
