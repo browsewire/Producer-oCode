@@ -6,7 +6,12 @@ const util = require('util')
 const exec = util.promisify(require('child_process').exec)
 const MurmurHash3 = require('imurmurhash')
 const producer = require('./broker')
-
+const {
+    awsDistributions,
+    findWhichEnv,
+    makeId,
+    ports
+} = require('./globals.js');
 /*
 Distributions:
 Develop: 
@@ -73,32 +78,6 @@ const storedCommands = {
     },
 }
 
-const makeId = function (length) {
-    var result = ''
-    var characters =
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    var charactersLength = characters.length
-    for (var i = 0; i < length; i++) {
-        result += characters.charAt(
-            Math.floor(Math.random() * charactersLength)
-        )
-    }
-    return result
-}
-
-const findWhichEnv = function () {
-    let environment = 'local'
-    if (process.env.MAG_NAME.indexOf('m2-dev') != -1) {
-        environment = 'dev'
-    }
-    if (process.env.MAG_NAME.indexOf('stag') != -1) {
-        environment = 'stage'
-    }
-    if (process.env.MAG_NAME.indexOf('www') != -1) {
-        environment = 'prod'
-    }
-    return environment
-}
 
 const addDisplayMessages = function (messages, config = {}) {
     //uses global displaymessages
@@ -180,36 +159,7 @@ const makeCacheKey = function (source, query, vars) {
     return hash
 }
 
-/*
-Distribution IDs tell aws which cache to flush
-*/
-const awsDistributions = {
-    dn: {
-        dev: 'E1EDB6ZFCID4PF',
-        stage: 'E391J2MGQ6ZBX3',
-        prod: 'E206DWJUE94NO9',
-    },
-    tf: {
-        dev: 'E1EDB6ZFCID4PF',
-        stage: 'E391J2MGQ6ZBX3',
-        prod: 'E1KDZBO4GSGPBK',
-    },
-    fa: {
-        dev: 'E1EDB6ZFCID4PF',
-        stage: 'E391J2MGQ6ZBX3',
-        prod: 'E2ICJXU4G8J547',
-    },
-    api: {
-        dev: 'E1EDB6ZFCID4PF',
-        stage: 'E3561NEQIBX1CU',
-        prod: 'EFV1F0BF9CFH',
-    },
-    other: {
-        dev: 'E1EDB6ZFCID4PF',
-        stage: 'E3561NEQIBX1CU',
-        prod: 'E1J71N7HEJQ45U',
-    },
-}
+
 
 /*
 Execute a bash function asynchronously then return the 
@@ -218,7 +168,7 @@ messages
 const execFunction = async function (execString) {
     let messages = []
     try {
-        let { stdout, stderr, error } = await exec(execString, {maxBuffer: 1024 * 2048})
+        let { stdout, stderr, error } = await exec(execString, { maxBuffer: 1024 * 2048 })
         if (error) {
             messages.push(
                 `bash command:\n${execString}\nerror: ${error.message}`
@@ -244,12 +194,12 @@ const execFunction = async function (execString) {
             stdout: 'There was an error calling: ' + execString,
             messages: [
                 'There was an error calling: ' +
-                    execString +
-                    '. ' +
-                    JSON.stringify({
-                        message: err.message,
-                        stack: err.stack,
-                    }),
+                execString +
+                '. ' +
+                JSON.stringify({
+                    message: err.message,
+                    stack: err.stack,
+                }),
             ],
         }
     }
@@ -266,7 +216,7 @@ const sleep = async function (ms) {
     Commands that are run by the processStoredCommands
 */
 const commands = {
-    moveWordpressDB: async function ( config) {
+    moveWordpressDB: async function (config) {
         let messages = [];
         addDisplayMessages('Attempting to copy Wordpress DB from staging to live and dev.');
         /*
@@ -275,34 +225,34 @@ const commands = {
             And this will tell you if it's complete
             aws --region us-east-1 --profile codebuild codebuild batch-get-builds --ids $build_id | jq .builds[].buildComplete
         */
-        
+
         const moveCmd = `aws --region us-east-1 codebuild start-build --project-name mag2-prod-wp-db-elder-CodeBuild | jq .build.id | sed 's/"//g'`;
- 
+
         let execMessages = await execFunction(moveCmd);
         console.log('execMessages from wordpress db copy', execMessages)
         messages = messages.concat(execMessages.messages);
 
-        if( typeof execMessages.stdout != 'undefined' && execMessages.stdout.length > 0){
+        if (typeof execMessages.stdout != 'undefined' && execMessages.stdout.length > 0) {
             let build_id = execMessages.stdout.replace(/(\r\n|\n|\r)/gm, "");
             const checkCmd = `aws --region us-east-1 codebuild batch-get-builds --ids ${build_id} | jq .builds[].buildComplete`;
             const maxAttempts = 15;
             let attempts = 0;
             let success = false;
-            while( !success && attempts <= maxAttempts){
+            while (!success && attempts <= maxAttempts) {
                 attempts++;
                 //wait 10 seconds 
                 addDisplayMessages('Waiting for Wordpress DB to Copy');
                 await sleep(20000);
                 let checkMessages = await execFunction(checkCmd);
                 console.log('checkMessages from wordpress db copy', checkMessages);
-                if( typeof checkMessages.stdout != 'undefined' && checkMessages.stdout.indexOf('true') != -1 ){
+                if (typeof checkMessages.stdout != 'undefined' && checkMessages.stdout.indexOf('true') != -1) {
                     console.log('db update check returned true')
                     success = true;
                 }
             }
-            if( success ){
+            if (success) {
                 return ['Wordpress DB copied from staging to dev and production.']
-            }else{
+            } else {
                 return ['Wordpress DB copy timed out. DB may not have copied.']
             }
         }
@@ -456,7 +406,7 @@ const commands = {
                 if (env === 'local') {
                     messages.push(
                         'Skipping container command in local environment: ' +
-                            execCmd
+                        execCmd
                     )
                 } else {
                     let execMessages = await execFunction(execCmd)
@@ -558,14 +508,14 @@ const commands = {
         let domain = ''
         switch (config.siteId) {
             case 'dn':
-                domain = 'diamondnexus'
+                domain = ports.dn_domain
                 break
             case 'tf':
-                domain = '1215diamonds'
+                domain = ports.tf_domain
 
                 break
             case 'fa':
-                domain = 'foreverartisans'
+                domain = ports.fa_domain
                 break
             default:
         }
@@ -651,8 +601,8 @@ const commands = {
                             await fs.unlink(dirpath + fileList2[i])
                             console.log(
                                 'removed old inprogress cache log: ' +
-                                    dirpath +
-                                    fileList2[i]
+                                dirpath +
+                                fileList2[i]
                             )
                         } catch (err) {
                             console.log(
@@ -693,14 +643,14 @@ const commands = {
                 console.log('in while loop waiting for cache to clear')
                 addDisplayMessages(
                     'Waiting for ' +
-                        config.siteId +
-                        ' AWS Cloudfront cache to clear.'
+                    config.siteId +
+                    ' AWS Cloudfront cache to clear.'
                 )
                 execMessages = await execFunction(checkcmd)
                 console.log('while loop execMessages', execMessages)
                 cacheResponseJson = JSON.parse(execMessages.stdout)
                 addDisplayMessages('Invalidation check message');
-                addDisplayMessages( JSON.stringify(cacheResponseJson, null, 4) );
+                addDisplayMessages(JSON.stringify(cacheResponseJson, null, 4));
                 status = cacheResponseJson.Invalidation.Status
                 messages = messages.concat(execMessages.messages)
                 if (execMessages.error != undefined) {
@@ -753,10 +703,10 @@ const commands = {
             // whichEnv = 'dev'
             addDisplayMessages(
                 'Skipping ' +
-                    config.siteId +
-                    ' AWS Cloudfront cache clear in ' +
-                    whichEnv +
-                    ' environment.'
+                config.siteId +
+                ' AWS Cloudfront cache clear in ' +
+                whichEnv +
+                ' environment.'
             )
 
             return messages
@@ -787,7 +737,7 @@ const commands = {
         let time = Date.now()
         let callerReference =
             'producer__' + whichEnv + '__' + config.siteId + '__' + time
-        
+
         let fileName = callerReference + '.txt'
         let flushApi = false
         let flushOther = false
@@ -866,14 +816,14 @@ const commands = {
                     Here's the message:
                     An error occurred (ServiceUnavailable) when calling the CreateInvalidation operation (reached max retries: 2): CloudFront encountered an internal error. Please try again.
                 */
-                while(execMessages.messages.indexOf('try again') != -1 && cacheAttempts < cacheMaxAttempts){
+                while (execMessages.messages.indexOf('try again') != -1 && cacheAttempts < cacheMaxAttempts) {
                     cacheAttempts++;
                     addDisplayMessages('Aws cache flush error, trying again. Attempt: ' + cacheAttempts)
                     addDisplayMessages(execMessages.messages)
                     await sleep(5000)
                     execMessages = await execFunction(clearcmd)
                 }
-                if( cacheAttempts == cacheMaxAttempts || typeof execMessages.error != 'undefined'){
+                if (cacheAttempts == cacheMaxAttempts || typeof execMessages.error != 'undefined') {
                     messages = messages.concat(execMessages.messages)
                     messages = messages.concat([
                         'There was an error in create-invalidation while trying to flush aws.',
@@ -886,9 +836,9 @@ const commands = {
                 if (cacheResponseJson.Invalidation.Status == 'Completed') {
                     messages = [
                         whichEnv +
-                            ' -- ' +
-                            config.siteId +
-                            ' -- cache cleared.',
+                        ' -- ' +
+                        config.siteId +
+                        ' -- cache cleared.',
                     ]
 
                     return messages
@@ -1197,10 +1147,10 @@ const processStoredCommand = async function (jsonObj) {
                     ) {
                         addDisplayMessages(
                             'New stack key supplied for ' +
-                                jsonObj.siteId +
-                                '. Resetting the ' +
-                                jsonObj.siteId +
-                                ' command stack.\n-----------------X'
+                            jsonObj.siteId +
+                            '. Resetting the ' +
+                            jsonObj.siteId +
+                            ' command stack.\n-----------------X'
                         )
                         //if there is a new stackKey provided for the same site, the old stack is wiped
                         //and a new one is started
@@ -1265,12 +1215,12 @@ const processStoredCommand = async function (jsonObj) {
                                 ].commands.shift()
                             addDisplayMessages(
                                 '-----------------^\nStarting Stack Command ' +
-                                    stackCmd.stackPage +
-                                    ' of ' +
-                                    stackCmd.stackTotalPages +
-                                    ' from ' +
-                                    stackCmd.siteId +
-                                    ' stack'
+                                stackCmd.stackPage +
+                                ' of ' +
+                                stackCmd.stackTotalPages +
+                                ' from ' +
+                                stackCmd.siteId +
+                                ' stack'
                             )
                             // addDisplayMessages(
                             //     'Running command ' +
@@ -1327,10 +1277,8 @@ module.exports = {
     awsDistributions,
     commands,
     isJson,
-    findWhichEnv,
     convertTZ,
     getTimeStamp,
     processStoredCommand,
-    makeId,
     addDisplayMessages,
 }

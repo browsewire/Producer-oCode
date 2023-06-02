@@ -3,15 +3,17 @@
 //     console.error('Memory leak detected:\n', info)
 // })
 
-const express = require('express')
-const app = express()
+const express = require('express');
+const app = express();
 const {
     processStoredCommand,
     isJson,
     addDisplayMessages,
+} = require('./commands');
+const {
     makeId,
-    findWhichEnv
-} = require('./commands')
+    ports
+} = require('./globals.js');
 // const producer = require('./broker')
 
 //this is a global variable, so not defined with let, const or var
@@ -40,200 +42,6 @@ global.export_status = {
     },
 }
 addDisplayMessages('Producer screen initialized.')
-
-let mag_url =
-    ['m2-dev', 'm2-staging', 'www'].indexOf(process.env.MAG_NAME) != -1
-        ? 'https://' +
-          process.env.MAG_NAME +
-          '-admin' +
-          '.diamondnexus.com' +
-          '/MissScarletWrenchKitchen/'
-        : 'https://' +
-        process.env.MAG_NAME +
-        '-admin' +
-        '.diamondnexus.com' + '/hive/'
-const ports = {
-    fa: process.env.PORT_FA,
-    fa_serve: process.env.PORT_SERVE_FA,
-    tf: process.env.PORT_TF,
-    tf_serve: process.env.PORT_SERVE_TF,
-    dn: process.env.PORT_DN,
-    dn_serve: process.env.PORT_SERVE_DN,
-    producer_name: process.env.PRODUCER_NAME,
-    host_name: process.env.MAG_NAME,
-    mag_name: process.env.MAG_NAME,
-    mag_url: mag_url,
-    wp_name: process.env.WP_NAME,
-    appSiteIds: ['dn', 'tf', 'fa'],
-    appRoutes: [
-        'blog',
-        'builder',
-        'collections',
-        'diamonds',
-        'errors',
-        'favorites',
-        'home',
-        'learn',
-        'misc',
-        'products',
-        'promo',
-        'search',
-        'stones',
-    ],
-    apiFlushJson: JSON.stringify({
-        siteId: 'api',
-        cmd: 'cacheclear',
-        key: 'key' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/*'],
-    }),
-    otherFlushJson: JSON.stringify({
-        siteId: 'other',
-        cmd: 'cacheclear',
-        key: 'key' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/*'],
-    }),
-    dnFlushJson: JSON.stringify({
-        siteId: 'dn',
-        cmd: 'cacheclear',
-        key: 'key' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/*'],
-    }),
-    tfFlushJson: JSON.stringify({
-        siteId: 'tf',
-        cmd: 'cacheclear',
-        key: 'key' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/*'],
-    }),
-    faFlushJson: JSON.stringify({
-        siteId: 'fa',
-        cmd: 'cacheclear',
-        key: 'key' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/*'],
-    }),
-    dnFlushGqlJson: JSON.stringify({
-        siteId: 'dn',
-        cmd: 'cacheclear',
-        key: 'key' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/graphql*'],
-    }),
-    tfFlushGqlJson: JSON.stringify({
-        siteId: 'tf',
-        cmd: 'cacheclear',
-        key: 'key' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/graphql*'],
-    }),
-    faFlushGqlJson: JSON.stringify({
-        siteId: 'fa',
-        cmd: 'cacheclear',
-        key: 'key' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/graphql*'],
-    }),
-    dnVarnishJson: JSON.stringify({
-        siteId: 'dn',
-        cmd: 'multiFlushVarnish',
-        key: 'keyfv' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/'],
-    }),
-    tfVarnishJson: JSON.stringify({
-        siteId: 'tf',
-        cmd: 'multiFlushVarnish',
-        key: 'keyfv' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/'],
-    }),
-    faVarnishJson: JSON.stringify({
-        siteId: 'fa',
-        cmd: 'multiFlushVarnish',
-        key: 'keyfv' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/'],
-    }),
-    dnVarnishApiJson: JSON.stringify({
-        siteId: 'dn',
-        api: true,
-        cmd: 'multiFlushVarnish',
-        key: 'keyfv' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/'],
-    }),
-    tfVarnishApiJson: JSON.stringify({
-        siteId: 'tf',
-        api: true,
-        cmd: 'multiFlushVarnish',
-        key: 'keyfv' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/'],
-    }),
-    faVarnishApiJson: JSON.stringify({
-        siteId: 'fa',
-        api: true,
-        cmd: 'multiFlushVarnish',
-        key: 'keyfv' + Math.random(),
-        page: 1,
-        totalPages: 1,
-        data: ['/'],
-    }),
-    dnDownJson: JSON.stringify({
-        siteId: 'dn',
-        cmd: 'container',
-        containerCmd: 'down',
-        key: 'dnDown' + makeId(10),
-        page: 1,
-        totalPages: 1,
-        data: [],
-    }),
-    tfDownJson: JSON.stringify({
-        siteId: 'tf',
-        cmd: 'container',
-        containerCmd: 'down',
-        key: 'tfDown' + makeId(10),
-        page: 1,
-        totalPages: 1,
-        data: [],
-    }),
-    faDownJson: JSON.stringify({
-        siteId: 'fa',
-        cmd: 'container',
-        containerCmd: 'down',
-        key: 'faDown' + makeId(10),
-        page: 1,
-        totalPages: 1,
-        data: [],
-    }),
-    moveWordpressDB: JSON.stringify({
-        siteId: 'dn',
-        cmd: 'moveWordpressDB',
-        key: 'moveWordpressDB' + makeId(10),
-        page: 1,
-        totalPages: 1,
-        data: [],
-    }),
-    whichEnv: findWhichEnv(),
-    indexer_status: null,
-    active_sale_rules: []
-}
 
 /* we are using pug template engine to render the producer landing page */
 app.set('view engine', 'pug')
@@ -277,19 +85,19 @@ app.get('/', async (req, res) => {
         //the wordpress cron job that checks
         //magento indexer and sale rules
         if (req.query.status) {
-            if( isJson(req.query.status) ) {
+            if (isJson(req.query.status)) {
                 const status = JSON.parse(req.query.status);
                 // console.log('status', status);
-                if( typeof status.time != 'undefined'){
-                    let utcSeconds =  status.time;
+                if (typeof status.time != 'undefined') {
+                    let utcSeconds = status.time;
                     let d = new Date(0); // The 0 there is the key, which sets the date to the epoch
-                    d.setUTCSeconds(utcSeconds); 
-                    ports.status_time = d.toLocaleString('en-US',{ timeZone: 'America/Chicago' });
+                    d.setUTCSeconds(utcSeconds);
+                    ports.status_time = d.toLocaleString('en-US', { timeZone: 'America/Chicago' });
                 }
-                if( typeof status.indexer_status != 'undefined'){
+                if (typeof status.indexer_status != 'undefined') {
                     ports.indexer_status = status.indexer_status;
                 }
-                if( typeof status.active_sale_rules != 'undefined' ){
+                if (typeof status.active_sale_rules != 'undefined') {
                     ports.active_sale_rules = status.active_sale_rules
                 }
             }
