@@ -1,16 +1,16 @@
-- var domain = '1215diamonds.com'
+- var domain = ports.tf_domain + '.com'
 - var producerurl = 'https://' + ports.producer_name + '.' + domain
-- var producerurldn = 'https://' + ports.producer_name + '.diamondnexus.com'
-- var producerurltf = 'https://' + ports.producer_name + '.1215diamonds.com'
-- var producerurlfa = 'https://' + ports.producer_name + '.foreverartisans.com'
+- var producerurldn = 'https://' + ports.producer_name +  '.' + ports.dn_domain + '.com'
+- var producerurltf = 'https://' + ports.producer_name + '.' + ports.tf_domain + '.com'
+- var producerurlfa = 'https://' + ports.producer_name +  '.' + ports.fa_domain + '.com'
 - var wpurl = 'https://' + ports.wp_name + '.' + domain + '/wp/wp-admin'
 - var magurl = ports.mag_url
-- var dn_live_static = 'https://' + ports.host_name + '.diamondnexus.com'
-- var tf_live_static = 'https://' + ports.host_name + '.1215diamonds.com'
-- var fa_live_static = 'https://' + ports.host_name + '.foreverartisans.com'
-- var dn_dev = 'https://' + ports.host_name + '-elder.diamondnexus.com'
-- var tf_dev = 'https://' + ports.host_name + '-elder.1215diamonds.com'
-- var fa_dev = 'https://' + ports.host_name + '-elder.foreverartisans.com'
+- var dn_live_static = 'https://' + ports.host_name + '.' + ports.dn_domain + '.com'
+- var tf_live_static = 'https://' + ports.host_name + '.' + ports.tf_domain + '.com'
+- var fa_live_static = 'https://' + ports.host_name + '.' + ports.fa_domain + '.com'
+- var dn_dev = 'https://' + ports.host_name + '-elder' + '.' + ports.dn_domain + '.com'
+- var tf_dev = 'https://' + ports.host_name + '-elder' + '.' + ports.tf_domain + '.com'
+- var fa_dev = 'https://' + ports.host_name + '-elder' + '.' + ports.dn_domain + '.com'
 - var displaymessages = displaymessages
 - var export_status = export_status
 - var sites = ['dn','tf','fa']
@@ -316,13 +316,13 @@ body
             .control-group 
                 h2 Dev Only Elder Clean
                 p This will delete your public folder and build files, this is just for dev use.
-                a(href='?task=cleanelder--dn') DN Delete Elder Publiic and Build Files
-                a(href='?task=cleanelder--tf') TF Delete Elder Publiic and Build Files
-                a(href='?task=cleanelder--fa') FA Delete Elder Publiic and Build Files
+                a(href='?task=cleanelder--dn') DN Delete Elder Public and Build Files
+                a(href='?task=cleanelder--tf') TF Delete Elder Public and Build Files
+                a(href='?task=cleanelder--fa') FA Delete Elder Public and Build Files
 
-            .control-group
-                h2 Overview
-                p The front end for diamondnexus.com, 1215diamonds.com, and foreverartisans.com is generated using the Elder framework. Elder is a node js application framework. Elder uses Svelte as its component framework. <br/> Elder pages are built with Svelte components. With Svelte alone, javascript is loaded onto a page, then the the html is rendered using javascript functions. Elder pre-renders the html using node js on the server, so that when the page loads, the html is immediately ready to view and is SEO friendly. After the page is loaded, the html is “hydrated” so that all of the js functionality of the app is attached. <br/>Elder can run in modes to either server side render pages on the fly or statically pre-render all of the pages on a site and store those static pages (including html, js and css) in a folder that can be served up like a traditional basic html site.<br/>The front end for these site is headless, meaning they get most of their data, text, images, etc, from a separate back-end. We are using Magento for product data and Wordpress for CMS and other custom data. Additionally, at this stage we will be using the default Magento Checkout, Cart, and User areas. The way we will jump between the Magento checkout and the rest of the site is to serve the sites through NGINX and switch based on the url.<br/>For our set-up, we are running Sapper in server side mode for development. This means that changes made to the code or in the databases will be viewable right away.<br/>For production we are using the static version of the site, meaning that in order to make changes, we need to run an export of the site. At this point in Sapper development and static rendering in general, we have to re-render the whole site when there are changes. This is because the partial files that are served as partial page loads are generated using unique hashes. There have been some recent improvements in this in the static rendering scene and this may be on the road map for Sapper coming soon.<br/>The front-end controller page, which you are viewing now, accepts get requests through a query parameter aka ?task=dev—dn. It turns these queries into rabbitmq tasks that are received by a node script listening for each app. Each app can be told to run in dev mode, which include dynamic server side rendering, or it can be told to export the files, which can then be served either through a node script (currently there’s a link to do this) or by NGINX.
+            //- .control-group
+            //-     h2 Overview
+            //-     p The front end for diamondnexus.com, 1215diamonds.com, and foreverartisans.com is generated using the Elder framework. Elder is a node js application framework. Elder uses Svelte as its component framework. <br/> Elder pages are built with Svelte components. With Svelte alone, javascript is loaded onto a page, then the the html is rendered using javascript functions. Elder pre-renders the html using node js on the server, so that when the page loads, the html is immediately ready to view and is SEO friendly. After the page is loaded, the html is “hydrated” so that all of the js functionality of the app is attached. <br/>Elder can run in modes to either server side render pages on the fly or statically pre-render all of the pages on a site and store those static pages (including html, js and css) in a folder that can be served up like a traditional basic html site.<br/>The front end for these site is headless, meaning they get most of their data, text, images, etc, from a separate back-end. We are using Magento for product data and Wordpress for CMS and other custom data. Additionally, at this stage we will be using the default Magento Checkout, Cart, and User areas. The way we will jump between the Magento checkout and the rest of the site is to serve the sites through NGINX and switch based on the url.<br/>For our set-up, we are running Sapper in server side mode for development. This means that changes made to the code or in the databases will be viewable right away.<br/>For production we are using the static version of the site, meaning that in order to make changes, we need to run an export of the site. At this point in Sapper development and static rendering in general, we have to re-render the whole site when there are changes. This is because the partial files that are served as partial page loads are generated using unique hashes. There have been some recent improvements in this in the static rendering scene and this may be on the road map for Sapper coming soon.<br/>The front-end controller page, which you are viewing now, accepts get requests through a query parameter aka ?task=dev—dn. It turns these queries into rabbitmq tasks that are received by a node script listening for each app. Each app can be told to run in dev mode, which include dynamic server side rendering, or it can be told to export the files, which can then be served either through a node script (currently there’s a link to do this) or by NGINX.
 
         .control-group-wrap-inner
             .control-group
