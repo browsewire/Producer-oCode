@@ -67,6 +67,7 @@ const ports = {
         'promo',
         'search',
         'stones',
+        'author',
     ],
     apiFlushJson: JSON.stringify({
         siteId: 'api',
