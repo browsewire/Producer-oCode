@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  producer:
+    build: .
+    container_name: producer_app
+    restart: unless-stopped
+    ports:
+    
+      - "3000:3000"   # change if your app runs on another port
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - .:/app
+      - /app/node_modules
