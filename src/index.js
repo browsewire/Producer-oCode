@@ -364,7 +364,7 @@ app.get('/', async (req, res) => {
             res.redirect('/')
         } else {
             res.render('index', {
-                title: 'FC Local',
+                title: 'Producer Box',
                 ports: ports,
                 displaymessages: displaymessages,
             })
