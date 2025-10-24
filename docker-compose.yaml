@@ -6,13 +6,10 @@ services:
     container_name: producer_app
     restart: unless-stopped
     ports:
-      - "3099:8080"
+    
+      - "3000:3000"   # change if your app runs on another port
     environment:
-      NODE_ENV: development
-      MAG_NAME: m2-dev 
+      - NODE_ENV=development
     volumes:
-      - .:/usr/src/app
-      # 🔴 REMOVE this line if it exists:
-      # - /usr/src/app/node_modules
-    command: npm run dev
-
+      - .:/app
+      - /app/node_modules

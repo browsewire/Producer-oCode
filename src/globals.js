@@ -13,21 +13,21 @@ const makeId = function (length) {
 
 const findWhichEnv = function () {
     let environment = 'local'
-    if (process.env.MAG_NAME.indexOf('m2-dev') != -1) {
+    if (process.env.MAG_NAME && process.env.MAG_NAME.indexOf('m2-dev') != -1) {
         environment = 'dev'
     }
-    if (process.env.MAG_NAME.indexOf('stag') != -1) {
+    if (process.env.MAG_NAME && process.env.MAG_NAME.indexOf('stag') != -1) {
         environment = 'stage'
     }
-    if (process.env.MAG_NAME.indexOf('www') != -1) {
+    if (process.env.MAG_NAME && process.env.MAG_NAME.indexOf('www') != -1) {
         environment = 'prod'
     }
     return environment
 }
 
 const dn_domain = 'diamondnexus';
-const mag_url =
-    ['m2-dev', 'm2-staging', 'www'].indexOf(process.env.MAG_NAME) != -1
+const mag_url = process.env.MAG_NAME
+    ? (['m2-dev', 'm2-staging', 'www'].indexOf(process.env.MAG_NAME) != -1
         ? 'https://' +
         process.env.MAG_NAME +
         '-admin' +
@@ -36,7 +36,8 @@ const mag_url =
         : 'https://' +
         process.env.MAG_NAME +
         '-admin' +
-        '.' + dn_domain + '.com' + '/hive/'
+        '.' + dn_domain + '.com' + '/hive/')
+    : 'http://localhost'
 const ports = {
     fa: process.env.PORT_FA,
     fa_serve: process.env.PORT_SERVE_FA,
@@ -52,7 +53,7 @@ const ports = {
     mag_name: process.env.MAG_NAME,
     mag_url: mag_url,
     wp_name: process.env.WP_NAME,
-    appSiteIds: ['dn', 'tf', 'fa'],
+    appSiteIds: ['dn', 'tf', 'fa', 'tlx'],
     appRoutes: [
         'blog',
         'builder',
@@ -215,6 +216,15 @@ const ports = {
         siteId: 'dn',
         cmd: 'moveWordpressDB',
         key: 'moveWordpressDB' + makeId(10),
+        page: 1,
+        totalPages: 1,
+        data: [],
+    }),
+    buildLuxraytime: JSON.stringify({
+        siteId: 'luxraytime',
+        cmd: 'buildLuxraytime',
+        buildType: 'npm',
+        key: 'buildLuxraytime' + makeId(10),
         page: 1,
         totalPages: 1,
         data: [],

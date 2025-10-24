@@ -13,7 +13,7 @@
 - var fa_dev = 'https://' + ports.host_name + '-elder' + '.' + ports.dn_domain + '.com'
 - var displaymessages = displaymessages
 - var export_status = export_status
-- var sites = ['dn','tf','fa']
+- var sites = ['dn','tf','fa','tlx']
 - var dbTaskStr = ports.moveWordpressDB
 - var whichEnv = ports.whichEnv
 
@@ -223,6 +223,7 @@ body
 
             .control-group
                 h2 Exports
+                button(onclick="location.reload()" style="padding:8px 16px;margin-bottom:10px;cursor:pointer;") 🔄 Refresh Status
                 form#incremental-build(action="/" method="GET")
                     input(type="hidden" name="task" value="export")
                     p Site
@@ -583,10 +584,31 @@ script.
             }
         } 
     }
-    setTimeout(function(){
-        location.reload()
-    },20000)
-    // You can put it in LocalStorage. 
+    // Auto-refresh after successful build trigger
+    let buildTriggered = localStorage.getItem('buildTriggered');
+    if (buildTriggered) {
+        let triggerTime = parseInt(buildTriggered);
+        let elapsed = Date.now() - triggerTime;
+        // Auto-refresh for 2 minutes after build trigger
+        if (elapsed < 120000) {
+            setTimeout(function(){
+                location.reload()
+            }, 10000);
+        } else {
+            localStorage.removeItem('buildTriggered');
+        }
+    }
+    
+    // Track when build is triggered
+    let buildForm = document.querySelector('#incremental-build');
+    if (buildForm) {
+        buildForm.addEventListener('submit', function() {
+            let tlxSelected = document.querySelector('[name="site"][value="tlx"]');
+            if (tlxSelected && tlxSelected.checked) {
+                localStorage.setItem('buildTriggered', Date.now().toString());
+            }
+        });
+    } 
     
     
     

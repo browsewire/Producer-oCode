@@ -3,6 +3,13 @@
 //     console.error('Memory leak detected:\n', info)
 // })
 
+// Load environment variables from .env file
+try {
+    require('dotenv').config();
+} catch(e) {
+    console.log('dotenv not available, using existing environment variables');
+}
+
 const express = require('express');
 const app = express();
 const {
@@ -34,6 +41,13 @@ global.export_status = {
         stopped: [],
     },
     fa: {
+        queued: [],
+        running: [],
+        complete: [],
+        flushed: [],
+        stopped: [],
+    },
+    tlx: {
         queued: [],
         running: [],
         complete: [],
@@ -256,6 +270,26 @@ app.get('/', async (req, res) => {
                 generatedJsonTask.stackTotalPages = 2
             }
 
+            // Handle TLX build (not export)
+            if (
+                typeof generatedJsonTask.siteId != 'undefined' &&
+                generatedJsonTask.siteId === 'tlx' &&
+                typeof generatedJsonTask.task != 'undefined' &&
+                generatedJsonTask.task.indexOf('export') != -1
+            ) {
+                // Convert export to buildLuxraytime command
+                generatedJsonTask = {
+                    siteId: 'luxraytime',
+                    cmd: 'buildLuxraytime',
+                    buildType: 'npm',
+                    key: 'buildLux' + makeId(10),
+                    page: 1,
+                    totalPages: 1,
+                    data: []
+                }
+                addDisplayMessages('Converting TLX export to Luxraytime build command')
+            }
+            
             //if this is an export task, add some extra commands
             if (
                 typeof generatedJsonTask.task != 'undefined' &&

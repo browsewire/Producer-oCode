@@ -54,6 +54,16 @@ const storedCommands = {
         data: [],
         pages: 0,
     },
+    luxraytime: {
+        key: '',
+        data: [],
+        pages: 0,
+    },
+    tlx: {
+        key: '',
+        data: [],
+        pages: 0,
+    },
     stacks: {
         dn: {
             stackKey: '',
@@ -72,6 +82,14 @@ const storedCommands = {
             commands: [],
         },
         other: {
+            stackKey: '',
+            commands: [],
+        },
+        luxraytime: {
+            stackKey: '',
+            commands: [],
+        },
+        tlx: {
             stackKey: '',
             commands: [],
         },
@@ -216,6 +234,55 @@ const sleep = async function (ms) {
     Commands that are run by the processStoredCommands
 */
 const commands = {
+    buildLuxraytime: async function (config) {
+        let messages = [];
+        addDisplayMessages('Starting Luxraytime build on beta.timeluxury.com');
+        
+        const buildPath = '/var/www/html/Luxraytime';
+        let buildCmd = '';
+        
+        // Check if directory exists, if not create it with sudo
+        const checkDirCmd = `sudo mkdir -p ${buildPath}`;
+        let execMessages = await execFunction(checkDirCmd);
+        messages = messages.concat(execMessages.messages);
+        
+        // Run build commands as root
+        if (typeof config.buildType !== 'undefined') {
+            switch(config.buildType) {
+                case 'npm':
+                    buildCmd = `sudo bash -c "cd ${buildPath} && npm install && npm install --save-dev @types/country-list && npm run build"`;
+                    break;
+                case 'git':
+                    buildCmd = `sudo bash -c "cd ${buildPath} && git pull origin main && npm install && npm install --save-dev @types/country-list && npm run build"`;
+                    break;
+                case 'custom':
+                    if (typeof config.customCmd !== 'undefined') {
+                        buildCmd = `sudo bash -c "cd ${buildPath} && ${config.customCmd}"`;
+                    } else {
+                        messages.push('Custom build type specified but no customCmd provided');
+                        return messages;
+                    }
+                    break;
+                default:
+                    buildCmd = `sudo bash -c "cd ${buildPath} && npm install && npm install --save-dev @types/country-list && npm run build"`;
+            }
+        } else {
+            // Default: try npm build as root
+            buildCmd = `sudo bash -c "cd ${buildPath} && npm install && npm install --save-dev @types/country-list && npm run build"`;
+        }
+        
+        addDisplayMessages('Build command: ' + buildCmd);
+        execMessages = await execFunction(buildCmd);
+        messages = messages.concat(execMessages.messages);
+        
+        if (execMessages.error) {
+            addDisplayMessages('Build failed with error: ' + execMessages.stderr);
+            return messages;
+        }
+        
+        addDisplayMessages('Luxraytime build completed successfully on beta.timeluxury.com');
+        return messages;
+    },
     moveWordpressDB: async function (config) {
         let messages = [];
         addDisplayMessages('Attempting to copy Wordpress DB from staging to live and dev.');
