@@ -237,8 +237,17 @@ const commands = {
     buildLuxraytime: async function (config) {
         let messages = [];
         addDisplayMessages('Starting Timeluxury build on beta.timeluxury.com');
+	addDisplayMessages(
+	`🔧 Build in progress, please wait...
+
+	🟢 [..............................]
+	🟢 [..............................]
+	🟢 [..............................]
+
+	💡 Tip: Press the 🔄 Refresh button to see the latest status`
+	);
         
-        const buildPath = '/var/www/next/LuxrayTime';
+	const buildPath = '/var/www/next/LuxrayTime';
         let buildCmd = '';
         
         // Run build commands as root
