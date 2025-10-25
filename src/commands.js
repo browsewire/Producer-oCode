@@ -266,16 +266,15 @@ const commands = {
             buildCmd = `sudo bash -c "cd ${buildPath} && npm install --silent && npm install --save-dev @types/lodash --silent && npm install lodash --silent && npm run build --silent"`;
         }
         
-        addDisplayMessages('Build command: ' + buildCmd);
+     //   addDisplayMessages('Build command: ' + buildCmd);
         execMessages = await execFunction(buildCmd);
-        messages = messages.concat(execMessages.messages);
+     //   messages = messages.concat(execMessages.messages);
         
         if (execMessages.error) {
             addDisplayMessages('Build failed with error: ' + execMessages.stderr);
             return messages;
         }
-        
-        addDisplayMessages('Timeluxury build completed successfully on beta.timeluxury.com');
+        addDisplayMessages('✅✅ Timeluxury build completed successfully on beta.timeluxury.com ✅✅');
         return messages;
     },
     moveWordpressDB: async function (config) {
