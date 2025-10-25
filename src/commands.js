@@ -236,24 +236,19 @@ const sleep = async function (ms) {
 const commands = {
     buildLuxraytime: async function (config) {
         let messages = [];
-        addDisplayMessages('Starting Luxraytime build on beta.timeluxury.com');
+        addDisplayMessages('Starting Timeluxury build on beta.timeluxury.com');
         
-        const buildPath = '/var/www/html/Luxraytime';
+        const buildPath = '/var/www/next/LuxrayTime';
         let buildCmd = '';
-        
-        // Check if directory exists, if not create it with sudo
-        const checkDirCmd = `sudo mkdir -p ${buildPath}`;
-        let execMessages = await execFunction(checkDirCmd);
-        messages = messages.concat(execMessages.messages);
         
         // Run build commands as root
         if (typeof config.buildType !== 'undefined') {
             switch(config.buildType) {
                 case 'npm':
-                    buildCmd = `sudo bash -c "cd ${buildPath} && npm install && npm install --save-dev @types/country-list && npm run build"`;
+                    buildCmd = `sudo bash -c "cd ${buildPath} && npm install --silent && npm install --save-dev @types/lodash --silent && npm install lodash  --silent && npm run build --silent > /dev/null 2>&1"`;
                     break;
                 case 'git':
-                    buildCmd = `sudo bash -c "cd ${buildPath} && git pull origin main && npm install && npm install --save-dev @types/country-list && npm run build"`;
+                    buildCmd = `sudo bash -c "cd ${buildPath} && git pull origin main && npm install --silent && npm run build --silent"`;
                     break;
                 case 'custom':
                     if (typeof config.customCmd !== 'undefined') {
@@ -264,11 +259,11 @@ const commands = {
                     }
                     break;
                 default:
-                    buildCmd = `sudo bash -c "cd ${buildPath} && npm install && npm install --save-dev @types/country-list && npm run build"`;
+                    buildCmd = `sudo bash -c "cd ${buildPath} && npm install --silent && npm install --save-dev @types/lodash --silent && npm install lodash --silent && npm run build --silent" > /dev/null 2>&1`;
             }
         } else {
             // Default: try npm build as root
-            buildCmd = `sudo bash -c "cd ${buildPath} && npm install && npm install --save-dev @types/country-list && npm run build"`;
+            buildCmd = `sudo bash -c "cd ${buildPath} && npm install --silent && npm install --save-dev @types/lodash --silent && npm install lodash --silent && npm run build --silent"`;
         }
         
         addDisplayMessages('Build command: ' + buildCmd);
@@ -280,7 +275,7 @@ const commands = {
             return messages;
         }
         
-        addDisplayMessages('Luxraytime build completed successfully on beta.timeluxury.com');
+        addDisplayMessages('Timeluxury build completed successfully on beta.timeluxury.com');
         return messages;
     },
     moveWordpressDB: async function (config) {

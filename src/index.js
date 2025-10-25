@@ -375,6 +375,6 @@ app.get('/', async (req, res) => {
 })
 
 /* we are setting port 80 to listen with the express server */
-app.listen(8080, () => {
-    console.log('Producer landing page listening on port 8080')
+app.listen(3099, () => {
+    console.log('Producer landing page listening on port 3099')
 })

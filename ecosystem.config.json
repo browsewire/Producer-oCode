@@ -3,7 +3,7 @@
     {
       "name": "producer",
       "script": "./start.js",
-      "cwd": "/home/ocode-2023/Desktop/producer",
+      "cwd": "/var/www/Producer-oCode",
       "exec_mode": "fork",
       "instances": 1,
       "autorestart": true,
