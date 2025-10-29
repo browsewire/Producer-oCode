@@ -27,13 +27,36 @@ style.
         box-sizing:border-box;
     }
     body{
-        padding:24px;
+        padding:0;
+        background:#1e293b;
     }
     .control-group-wrap{
         display:flex;
-        flex-flow:row;
+        flex-flow:column;
         justify-content:space-between;
         align-items:flex-start;
+        
+    }
+    .header_section{
+        padding:20px 15%;
+        border-bottom:1px solid rgba(255, 255, 255, 0.1);
+        width:100%;
+        
+    }
+    .header_section h2{
+        color: #fff;
+        font-size: 22px;
+        line-height: normal;
+        padding: 0;
+        margin: 0;
+    }
+    .content_section{
+       display:flex;
+        flex-flow:row;
+        justify-content:space-between;
+        align-items:flex-start; 
+         padding:20px 15%;
+          width:100%;
     }
     .control-group-wrap-inner{
         display:inline-block;
@@ -197,35 +220,33 @@ style.
 
 body
     .control-group-wrap
-        .control-group-wrap-inner
-            .control-group
-                h2=ports.host_name
-                a(href='https://beta.timeluxury.com/admin', target='_blank') Magento Admin
-                a(href='https://beta.timeluxury.com', target='_blank') View Timeluxury
+        .header_section
+            h2 Code Producer
+        .content_section
+            .control-group-wrap-inner
+                .control-group
+                    h2 Build
+                    button(onclick="location.reload()" style="padding:8px 16px;margin-bottom:10px;cursor:pointer;") 🔄 Refresh Status
+                    form#incremental-build(action="/" method="GET")
+                        input(type="hidden" name="task" value="export")
+                        input(type="hidden" name="site" value="tlx")
+                        input(type='submit' value="Build Timeluxury")
 
-            .control-group
-                h2 Build
-                button(onclick="location.reload()" style="padding:8px 16px;margin-bottom:10px;cursor:pointer;") 🔄 Refresh Status
-                form#incremental-build(action="/" method="GET")
-                    input(type="hidden" name="task" value="export")
-                    input(type="hidden" name="site" value="tlx")
-                    input(type='submit' value="Build Timeluxury")
-
-            .control-group
-                if ports.indexer_status != null
-                    h2='Indexer Status as of ' + ports.status_time
-                    if ports.indexer_status
-                        p Magento Indexes are Green.
+                .control-group
+                    if ports.indexer_status != null
+                        h2='Indexer Status as of ' + ports.status_time
+                        if ports.indexer_status
+                            p Magento Indexes are Green.
+                        else
+                            p Magento Indexes are Red, please wait to export.
+                        h2 Active Sale Rules
+                        if typeof ports.active_sale_rules != 'undefined' && ports.active_sale_rules
+                            ul.active_sale_rules
+                                each sale_rule in ports.active_sale_rules
+                                    li
+                                        p=sale_rule.rule + ' -- ' + sale_rule.id + ' -- ' + sale_rule.websites.join(',')
                     else
-                        p Magento Indexes are Red, please wait to export.
-                    h2 Active Sale Rules
-                    if typeof ports.active_sale_rules != 'undefined' && ports.active_sale_rules
-                        ul.active_sale_rules
-                            each sale_rule in ports.active_sale_rules
-                                li
-                                    p=sale_rule.rule + ' -- ' + sale_rule.id + ' -- ' + sale_rule.websites.join(',')
-                else
-                    h2 Waiting to receive Magento status information ...
+                        h2 Waiting to receive Magento status information ...
 
 
 
